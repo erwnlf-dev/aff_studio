@@ -7,26 +7,36 @@ Dokumen ini menjalankan mandat §1.7: mengkritisi rencana, menjadikan spesifikas
 | `config/video-params.yaml` | Registry parameter: nilai, rentang aman, alasan, sumber, status, kunci compliance, dan daftar eksperimen |
 | `tools/cek_params.py` | Cek konsistensi registry, plus snapshot parameter dan `variant_id` per video |
 | `tests/test_cek_params.py` | Tes aturan registry (`python3 -m unittest discover -s tests`) |
-| `docs/adr/ADR-P0*.md` | Usulan yang mengubah keputusan inti, berstatus *Proposed* |
+| `docs/adr/ADR-P0*.md` | Usulan yang mengubah keputusan inti (P01–P05), berstatus *Proposed* |
 
 **Label di seluruh dokumen:**
 - **[Default]**: dipakai di MVP.
 - **[Usulan]**: perlu persetujuan pemilik (atau ADR kalau menyentuh keputusan inti).
 - **[Eksperimen]**: MVP memakai nilai kontrol, lalu diuji lewat A/B.
 
-## 0. Asumsi tentang prompt induk
+## 0. Fondasi: pipeline Baru Tau
 
-Dokumen ini ditulis tanpa melihat bagian 1.1–1.6 dan daftar file Fase 1. Isinya hanya diturunkan dari teks §1.7 dan dari temuan Baru Tau (`/data/apps/baru-tau-autopilot`, `/data/apps/slate-studio`). Asumsi yang dipakai:
+`aff_studio` mencontek pipeline *Baru Tau.* yang sudah berjalan di server ini. Hal-hal di bawah sudah dicek dari kode, bukan asumsi:
 
-| # | Asumsi | Kalau ternyata salah, yang perlu disesuaikan |
+| Bagian | Di Baru Tau (dicek 20 Oktober 2026) | Untuk affiliate |
+|---|---|---|
+| Kreator | Claude Code headless, Opus 5.5 effort extra high, satu sesi panjang per episode (`baru-tau-autopilot/CLAUDE.md`, `lib.sh`) | Mahal dan lambat kalau satu sesi per video (K14, ADR-P05) |
+| VO | Slate `buat_voiceover`: `eleven_v3`, stability 0,5, ruang napas 0,38/0,7 detik, timing per kata di `vo.json` | Dipakai apa adanya |
+| Render | Slate `render_film`: `film.js` (canvas 1080×1920) dirender Chromium per frame di CPU, `RENDER_WORKERS=3`, fps 8–60 (bawaan 24) | Ken Burns = `drawImage` di canvas; foto masuk sebagai teks (§5.1) |
+| Musik dan mix | `slate_score.py` (partitur JSON), ducking dinamis 7 dB, −14 LUFS | Dipakai apa adanya |
+| QA | `qa.py`: loudness, frame beku/hitam, kedip, loop, kontras | Ditambah QA compliance (B3) |
+| Gerbang | Dua gerbang: `setuju N` sebelum VO, `posting NNN` sebelum tayang | Pola yang sama (ADR-P02 tinggal menambah batch) |
+| Posting | Hanya **Threads**, lewat Upload-Post (paket gratis 10 per bulan) atau Zernio (tanpa batas jumlah posting) | TikTok/Reels/Shorts belum ada rutenya (K15) |
+| Konsol | `web/` dengan modul di `web/modules/` (barutau, kunci); inbox + Web Push | Modul baru `web/modules/affiliate/` |
+
+**Yang masih asumsi:**
+
+| # | Asumsi | Kalau salah, yang disesuaikan |
 |---|---|---|
 | A1 | Feed produk membawa sekitar: judul, harga, foto, rating, jumlah terjual, kategori, komisi, link affiliate, dan `compliance_note` | §3.7, ADR-P01 |
-| A2 | Video dibuat dari foto produk (Ken Burns) + VO ElevenLabs + naskah LLM, lalu dirender di server CPU tanpa GPU (seperti Slate Studio) | §3.5, §5 |
-| A3 | Target platform: TikTok, Reels, Shorts, dan mungkin Threads; lebih dari satu akun | §3.4, §3.9, ADR-P03 |
-| A4 | Ada gerbang approval manusia sebelum posting | ADR-P02 |
-| A5 | Konsol web Baru Tau (`web/modules/`) akan mendapat modul affiliate | §4.1 (input metrik), B14 |
+| A3 | Target platform: TikTok, Reels, Shorts, dan Threads; lebih dari satu akun | §3.4, §3.9, K15, ADR-P03 |
 
-**Tindakan:** cocokkan tabel ini dengan prompt induk. Asumsi yang salah dicoret di sini, lalu bagian terkait direvisi. Nomor ADR `P01–P04` diganti nomor urut final saat digabung dengan ADR Fase 1.
+Nomor ADR `P01–P05` diganti nomor urut final saat digabung dengan ADR proyek.
 
 ## 1. Asumsi yang saya ragukan
 
@@ -138,13 +148,32 @@ Setiap butir ditulis dalam urutan: asumsi → kenapa saya ragu → alternatif. U
   - Threads tetap pagi (data Baru Tau).
   - EXP-11 dijalankan paling akhir dengan rotasi slot per hari.
 
-**K13. "Gerbang approval manusia skalanya cukup."**
-- **Kenapa ragu:**
+**K13. "Gerbang approval Baru Tau cukup untuk volume affiliate."**
+- **Kenapa ragu:** Baru Tau sudah punya dua gerbang (`setuju N` sebelum VO, `posting NNN` sebelum tayang), tapi keduanya per episode dan dirancang untuk satu video per hari.
   - Kalau pemilik menonton setiap video final di HP (sekitar 1–2 menit per video), 10 video per hari memakan 20 menit atau lebih per hari.
-  - Video yang ditolak sudah menghabiskan karakter TTS dan waktu render.
-- **Alternatif:** [Usulan, ADR-P02] gerbang dua tahap, tetap dengan manusia di kedua tahap:
-  1. naskah + hook + frame 0 sebelum TTS,
-  2. video final sebelum posting, dengan persetujuan batch.
+- **Alternatif:** [Usulan, ADR-P02] pertahankan dua gerbang Baru Tau, tambahkan:
+  - kartu tahap 1 yang memuat naskah + frame 0 (bukan hanya judul topik),
+  - persetujuan batch untuk video yang lolos QA tanpa catatan.
+
+**K14. "Satu sesi kreator Opus per video, seperti Baru Tau."**
+- **Kenapa ragu:**
+  - Di Baru Tau, satu sesi Opus 5.5 effort extra high menulis `film.js` dari nol, lalu menjalankan putaran pratinjau dan critic loop. Itu sepadan untuk satu explainer per hari.
+  - Untuk 4–6 video produk per hari dengan struktur yang mirip, cara ini mahal dan lama.
+  - Satu sesi per video juga membuat parameter sulit dikontrol: model bisa menyimpang dari snapshot, jadi `variant_id` tidak lagi menjamin isi video.
+- **Alternatif:** [Usulan, ADR-P05] `film.js` template per template video, digerakkan oleh JSON dari snapshot. LLM hanya menulis naskah, hook, pemilihan foto per beat, dan teks post (satu panggilan terstruktur). Render, QA, musik, dan VO tetap lewat Slate. Sesi kreator penuh hanya untuk format khusus (B4 seri, B16 edu-commerce).
+
+**K15. "Posting ke TikTok/Reels/Shorts dengan link affiliate bisa otomatis."**
+- **Kenapa ragu:**
+  - Slate saat ini hanya memosting ke Threads (Upload-Post, Zernio).
+  - Paket gratis Upload-Post hanya 10 upload per bulan, jauh di bawah `posting.maks_per_akun_per_hari = 2`.
+  - Saya tidak menemukan bukti bahwa Content Posting API TikTok bisa memasang tautan produk TikTok Shop. Panduan resmi yang ketemu hanya menyebut cara manual lewat aplikasi atau Seller Center. Ini belum pasti; perlu dicek ke referensi API.
+  - Threads tidak punya anchor produk. Link harus di teks atau reply pertama, sementara aturan Baru Tau melarang link di teks post demi jangkauan.
+- **Alternatif:**
+  - [Default] MVP memakai rute yang sudah ada:
+    - Threads lewat Zernio, dengan link di reply pertama,
+    - TikTok/Reels: pipeline menyiapkan file + teks + daftar produk, lalu pemilik mengunggah dan memasang anchor produk di aplikasi (seperti Baru Tau, ada pilihan unggah manual).
+  - Parameter `posting.jam_wib.*` selain Threads menjadi jam pengingat untuk unggahan manual.
+  - Rute otomatis per platform adalah keputusan rute publishing (ADR-P03).
 
 ## 2. Registry parameter
 
@@ -160,7 +189,7 @@ Semua parameter ada di `config/video-params.yaml` dengan nama bertitik (`vo.temp
 Field `satuan`, `kunci`, dan `eksperimen` opsional. Field yang salah ketik ditolak.
 
 ```
-python3 tools/cek_params.py                                   # ok: 96 parameter … / daftar kesalahan, exit 1
+python3 tools/cek_params.py                                   # ok: 98 parameter … / daftar kesalahan, exit 1
 python3 tools/cek_params.py snapshot --eksperimen EXP-02 --lengan C
 python3 tools/cek_params.py snapshot --set hook.tipe=pain     # ditolak kalau di luar rentang/pilihan atau berkunci
 ```
@@ -455,12 +484,15 @@ Isi harga dari tagihan aktual. Harga tidak ditulis di sini karena berubah.
   - Instruksi tetap (aturan gaya, compliance, TERLARANG) diletakkan di awal prompt supaya bisa memakai prompt caching.
   - Generasi malam hari untuk antrean besok lewat Batch API (lebih murah, tidak mendesak).
   - Model besar untuk naskah; model kecil untuk klasifikasi dan penilaian (pemilihan foto, B2 penilai hook, B3 cek teks).
-- **Compute (server CPU tanpa GPU):**
-  - **Layer terpisah:** latar + Ken Burns per beat di-render dan di-cache dengan kunci hash(foto, parameter gerak, durasi, fps). Caption, label, dan disclosure ditumpuk di pass akhir. Varian yang hanya beda caption atau musik memakai ulang layer gerak.
-  - **Paralel per beat:** segmen dengan parameter encode identik digabung `concat -c copy`, sehingga skalanya hampir linear dengan jumlah core. Antrean render jangan berebut CPU dengan render Baru Tau (jadwalkan di luar jam produksi Baru Tau, atau batasi `nice`/jumlah worker).
-  - **Kalau memakai ffmpeg `zoompan`:** foto di-upscale sekali (2× target, Lanczos, di-cache) sebelum zoompan, supaya pembulatan piksel tidak membuat gerak bergetar. Ukur dulu; ganti teknik kalau getaran masih terlihat di HP.
-  - **Encode:** x264 `-preset faster -crf 20`, yuv420p, AAC 128 kbps. Platform meng-encode ulang, jadi bitrate di atas sekitar 8–10 Mbps tidak terlihat.
-  - **Pratinjau approval:** 540×960 dan 15 fps (sekitar 1/8 piksel×frame), final setelah disetujui.
+- **Sesi kreator (Claude Code):** di pipeline Baru Tau, ini kemungkinan komponen termahal per video (K14). [Usulan, ADR-P05] Ganti dengan template `film.js` + satu panggilan LLM terstruktur per produk.
+- **Compute (Slate `render_film`, Chromium per frame di CPU):**
+  - **Foto harus masuk sebagai teks.** `file_tambahan` hanya menerima file teks (.js/.css/.json/.svg/.html), maksimal 2 MB per file dan 8 MB total, dan jaringan film diblokir. Foto di-resize ke sisi panjang 1080 px, JPEG kualitas 80 (sekitar 150–250 KB), lalu ditaruh sebagai data URI base64 di `foto.json` (+33%). Enam foto ≈ 1,5 MB, aman di bawah batas (`foto.embed_*` di registry).
+  - **Waktu render:** perkiraan Slate sendiri ≈ durasi × fps / worker × 0,35 detik. Video 22 detik dengan 3 worker ≈ 77 detik di 30 fps, atau ≈ 62 detik di 24 fps. `motion.fps = 30` (H11) menambah sekitar 25% waktu render; kalau EXP atau tes mata menunjukkan 24 fps tidak patah-patah untuk Ken Burns di canvas, turunkan ke 24.
+  - **Ken Burns di canvas:** `drawImage` dengan transformasi subpiksel tidak punya masalah pembulatan seperti `zoompan` ffmpeg. Getaran yang tersisa hanya soal fps.
+  - **Worker dipakai bersama Baru Tau** (`RENDER_WORKERS=3`). Antrean affiliate dijadwalkan di luar jam produksi Baru Tau, atau Slate diberi antrean prioritas [Usulan].
+  - **`motion_blur` tetap 0.** Biayanya naik sebanding jumlah subframe, dan Ken Burns pelan tidak butuh.
+  - **Pratinjau tahap 1:** `pratinjau_film` (still di beberapa waktu) untuk frame 0 dan 2–3 beat. Tanpa render video dan tanpa TTS.
+  - **[Usulan] Cache layer gerak** (render per beat lalu digabung) belum ada di Slate karena Slate selalu merender film utuh. Baru layak kalau varian yang hanya beda caption/musik ternyata banyak.
 - **Ukur sebelum optimasi:** catat per video `detik_render`, `karakter_tts`, dan `token_llm` di log biaya, lalu sasar komponen terbesar. Target awal (hipotesis): render ≤ 2× durasi video per video di server.
 
 ### 5.2 Di mana kualitas boleh turun tanpa terasa, dan di mana tidak
@@ -510,6 +542,7 @@ Tidak ada satu pun yang diterapkan di registry atau kode; parameter yang bergant
 | [ADR-P02](adr/ADR-P02-gerbang-approval-dua-tahap.md) | Gerbang approval dua tahap dan persetujuan batch | gerbang approval manusia | hemat TTS dan render (§5.1) |
 | [ADR-P03](adr/ADR-P03-atribusi-dan-anti-duplikat.md) | Atribusi per video (sub_id) dan aturan anti-duplikat publikasi | rute publishing, kontrak feed | §4.1, template perbandingan, B15 |
 | [ADR-P04](adr/ADR-P04-fakta-umum-di-luar-feed.md) | Fakta umum terverifikasi di luar feed untuk konten edu-commerce | aturan "tidak ada klaim di luar feed" | B16 |
+| [ADR-P05](adr/ADR-P05-film-template-bukan-sesi-kreator.md) | `film.js` template berbasis snapshot, bukan sesi kreator per video | stack (cara film dibuat) | K14, §5.1, `variant_id` yang bisa dipercaya |
 
 ## 8. Sumber
 
@@ -534,10 +567,15 @@ Tidak ada satu pun yang diterapkan di registry atau kode; parameter yang bergant
   - [socialmediaexaminer.com](https://www.socialmediaexaminer.com/?p=251758)
 - ElevenLabs v3, stability sebagai preset Creative/Natural/Robust:
   - [elevenlabs.io/docs/best-practices/prompting](https://elevenlabs.io/docs/best-practices/prompting)
+- Tautan produk TikTok: Content Posting API (Direct Post/Upload) tidak menyebut tautan produk; panduan yang ditemukan menambahkannya lewat aplikasi atau Seller Center:
+  - [developers.tiktok.com/products/content-posting-api](https://developers.tiktok.com/products/content-posting-api)
+  - [ads.tiktok.com/help — add product links](https://ads.tiktok.com/help/article/add-product-links-tiktok-videos?lang=en)
+  - [videowise.com](https://videowise.com/live-commerce/how-to-post-a-shoppable-video-on-tiktok-for-higher-conversions)
 
 **Yang masih perlu diverifikasi sebelum MVP dikunci:**
 - angka zona aman per platform (screenshot UI),
 - teks resmi aturan orisinalitas TikTok dan TikTok Shop,
 - syarat lengkap Shopee Affiliate soal klaim harga dan disclosure,
 - dukungan Sub ID di link affiliate,
+- apakah ada API resmi untuk memasang tautan produk TikTok Shop (K15),
 - metrik retensi apa saja yang bisa diambil lewat API untuk jenis akun yang dipakai.

@@ -6,11 +6,11 @@
 
 ## Konteks
 
-Rencana memakai gerbang approval manusia sebelum posting. Kalau gerbang itu hanya ada di video final:
-- setiap video yang ditolak sudah menghabiskan karakter ElevenLabs dan waktu render CPU,
-- pemilik harus menonton setiap video penuh di HP (1–2 menit per video).
+Pipeline Baru Tau yang dicontek punya dua gerbang: `setuju N` (topik, sebelum VO dan render) dan `posting NNN` (sebelum tayang). Keduanya dirancang untuk satu video per hari:
+- tahap 1 hanya menampilkan judul dan hook layar, bukan naskah,
+- tahap 2 meminta pemilik menonton setiap video penuh di HP (1–2 menit per video).
 
-Baru Tau sudah menunjukkan pola yang lebih hemat: topik disetujui dulu (`setuju N`), baru kredit dan render dipakai.
+Dengan 4–6 video affiliate per hari, menyalin pola ini apa adanya membuat pemilik jadi leher botol. Di sisi lain, kalau naskah baru dinilai setelah render, setiap penolakan sudah menghabiskan karakter ElevenLabs dan waktu render.
 
 ## Keputusan yang diusulkan
 
@@ -29,7 +29,8 @@ Manusia tetap memutuskan di dua titik. Tidak ada yang tayang tanpa persetujuan.
 
 ## Alternatif yang ditolak
 
-- **Approval hanya di akhir (rencana saat ini).** Boros TTS dan render untuk naskah yang ditolak.
+- **Approval hanya di akhir.** Boros TTS dan render untuk naskah yang ditolak.
+- **Gerbang Baru Tau apa adanya (per item, tanpa batch).** Aman, tapi tidak bertahan di volume affiliate.
 - **Auto-approve video yang lolos QA.** Ini menghapus gerbang manusia, jadi di luar mandat.
 
 ## Konsekuensi

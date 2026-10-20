@@ -391,7 +391,7 @@ parameter:
     status: default
     nilai: 30
     pilihan: [24, 30]
-    alasan: "Baru Tau 24 fps cocok untuk animasi terbatas. Ken Burns adalah pan/zoom pelan yang kontinu; di 24 fps gerak lambat lebih mudah terlihat patah. Biaya +25% frame (doc 12 §5)."
+    alasan: "Baru Tau 24 fps (bawaan Slate) cocok untuk animasi terbatas. Ken Burns adalah pan/zoom pelan yang kontinu; di 24 fps gerak lambat lebih mudah terlihat patah. Biaya: waktu render Slate ≈ dur × fps / worker × 0,35 s, jadi +25% (22 s: ~77 s vs ~62 s dengan 3 worker). Turunkan ke 24 kalau tes mata di HP tidak menemukan patah (doc 12 §5)."
     sumber: [TEKNIS, H11]
   motion.kenburns.zoom_per_detik:
     status: default
@@ -654,6 +654,19 @@ parameter:
     satuan: px
     alasan: "Di bawah ini foto hanya boleh tampil sebagai kartu kecil, bukan layar penuh."
     sumber: [TEKNIS]
+  foto.embed_sisi_panjang_px:
+    status: default
+    nilai: 1080
+    rentang: [800, 1440]
+    satuan: px
+    alasan: "Slate render_film hanya menerima file teks (maks 2 MB per file, 8 MB total), jadi foto masuk sebagai base64 di foto.json. 1080 px cukup untuk layar penuh dengan zoom ≤ 1,15 (kanvas 1080 lebar)."
+    sumber: [BT-SLATE, TEKNIS]
+  foto.embed_jpeg_kualitas:
+    status: default
+    nilai: 80
+    rentang: [70, 92]
+    alasan: "≈ 150–250 KB per foto; 6 foto ≈ 1,5 MB setelah base64 (+33%). Di atas 90 ukuran naik tanpa beda terlihat setelah platform encode ulang."
+    sumber: [BT-SLATE, TEKNIS]
   foto.mode_foto_persegi:
     status: eksperimen
     nilai: kartu_di_latar_warna
@@ -674,7 +687,7 @@ parameter:
     status: eksperimen
     nilai: ["19:00"]
     pilihan: ["07:00", "12:00", "17:00", "19:00", "21:00"]
-    alasan: "Hipotesis jam belanja malam (H08). Data akun sendiri mengalahkan data umum."
+    alasan: "Hipotesis jam belanja malam (H08). Data akun sendiri mengalahkan data umum. Selama rute TikTok manual (anchor produk dipasang di aplikasi, doc 12 K15), ini jam pengingat unggah ke pemilik."
     sumber: [H08]
     eksperimen: EXP-11
   posting.jam_wib.reels:
@@ -700,7 +713,7 @@ parameter:
     kunci: compliance
     nilai: 2
     rentang: [1, 3]
-    alasan: "Akun baru dimulai pelan. Lebih dari 3 video jualan/hari dari satu akun mendekati pola spam. Naik ke 3 hanya setelah 30 hari tanpa pelanggaran."
+    alasan: "Akun baru dimulai pelan. Lebih dari 3 video jualan/hari dari satu akun mendekati pola spam. Naik ke 3 hanya setelah 30 hari tanpa pelanggaran. Ini batas atas, bukan target: posting otomatis lewat Upload-Post gratis hanya 10/bulan (pakai Zernio untuk Threads)."
     sumber: [R-TIKTOK-ORI]
   posting.jeda_min_antar_post_menit:
     status: default
