@@ -29,12 +29,9 @@ Dokumen ini menjalankan mandat §1.7: mengkritisi rencana, menjadikan spesifikas
 | Posting | Hanya **Threads**, lewat Upload-Post (paket gratis 10 per bulan) atau Zernio (tanpa batas jumlah posting) | TikTok/Reels/Shorts belum ada rutenya (K15) |
 | Konsol | `web/` dengan modul di `web/modules/` (barutau, kunci); inbox + Web Push | Modul baru `web/modules/affiliate/` |
 
-**Yang masih asumsi:**
-
-| # | Asumsi | Kalau salah, yang disesuaikan |
-|---|---|---|
-| A1 | Feed produk membawa sekitar: judul, harga, foto, rating, jumlah terjual, kategori, komisi, link affiliate, dan `compliance_note` | §3.7, ADR-P01 |
-| A3 | Target platform: TikTok, Reels, Shorts, dan Threads; lebih dari satu akun | §3.4, §3.9, K15, ADR-P03 |
+**Input dan platform (dari paket data pemilik, 2026-10-19):**
+- **Input:** produk dipilih, di-scrape, dan diberi link affiliate oleh pemilik lewat Claude in Chrome. Paket datanya (`products.json`, `meta.json` per produk, `manifest_slim.json`) menjadi kontrak input. Field dan celahnya ada di `docs/TODO.md` §3.
+- **Platform fase 1:** Shopee Video, diunggah lewat Chrome dengan konfirmasi per batch. TikTok dan Threads menyusul. Bagian dokumen ini yang menyebut TikTok/Reels/Shorts berlaku untuk fase 2.
 
 Nomor ADR `P01–P05` diganti nomor urut final saat digabung dengan ADR proyek.
 
@@ -189,7 +186,7 @@ Semua parameter ada di `config/video-params.yaml` dengan nama bertitik (`vo.temp
 Field `satuan`, `kunci`, dan `eksperimen` opsional. Field yang salah ketik ditolak.
 
 ```
-python3 tools/cek_params.py                                   # ok: 98 parameter … / daftar kesalahan, exit 1
+python3 tools/cek_params.py                                   # ok: 99 parameter … / daftar kesalahan, exit 1
 python3 tools/cek_params.py snapshot --eksperimen EXP-02 --lengan C
 python3 tools/cek_params.py snapshot --set hook.tipe=pain     # ditolak kalau di luar rentang/pilihan atau berkunci
 ```
@@ -211,7 +208,7 @@ Parameter dengan `kunci: compliance` atau `kunci: qa` tidak boleh menjadi lengan
 | Kunci | Parameter | Alasan |
 |---|---|---|
 | compliance | `disclosure.ada`, `disclosure.gaya`, `disclosure.font_px` | Disclosure selalu ada dan terbaca sejak frame 0 |
-| compliance | `harga.diucapkan`, `harga.umur_data_maks_jam` | Tidak ada harga basi (K5) |
+| compliance | `harga.diucapkan`, `harga.umur_data_maks_jam`, `harga.tampilkan_harga_coret` | Tidak ada harga basi, tidak ada diskon yang menyesatkan (K5, TODO §3) |
 | compliance | `bukti.format` | Hanya angka feed, ditulis persis |
 | compliance | `musik.sumber` | Tidak ada musik berlisensi yang dibakar ke file |
 | compliance | `foto.tolak_watermark_pihak_lain`, `varian.beda_minimal_grup` | Orisinalitas (K3, K4) |

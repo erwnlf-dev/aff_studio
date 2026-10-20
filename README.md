@@ -6,6 +6,7 @@ Repo ini mencontek pipeline Baru Tau di server ini (`/data/apps/baru-tau-autopil
 
 | Path | Isi |
 |---|---|
+| `docs/TODO.md` | Status, keputusan pemilik, dan urutan kerja berikutnya |
 | `docs/12-optimization-and-experiments.md` | Kritik rencana, parameter, sistem eksperimen, ide, optimasi teknis |
 | `docs/adr/ADR-P0*.md` | Usulan yang mengubah keputusan inti (P01–P05, status *Proposed*) |
 | `config/video-params.yaml` | Registry semua parameter video (nilai, rentang, alasan, sumber, kunci compliance) dan eksperimen |

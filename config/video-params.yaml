@@ -36,6 +36,7 @@ sumber:
   R-SHORTS-BENCH: "Panduan pihak ketiga Shorts (subscribr.ai, contentstudio.io, socialmediaexaminer.com): tidak ada ambang resmi; bandingkan dengan video sendiri"
   R-ELEVEN: "ElevenLabs docs 'Prompting Eleven v3': stability = preset Creative/Natural/Robust; v2 punya stability/similarity/style/speed kontinu"
   TEKNIS: "Alasan teknis render/encode (dijelaskan di doc 12 §5)"
+  DATA-2026-10-19: "Paket data pemilik affiliate_pipeline_data_2026-10-19.zip (9 produk shortlist); temuan di docs/TODO.md §3"
 
 hipotesis:
   H01: "Video produk lebih pendek dari explainer: unit informasinya lebih sedikit (produk, 2–3 manfaat, bukti, CTA), jadi 18–25 s memberi completion lebih tinggi tanpa memotong CTA."
@@ -548,6 +549,13 @@ parameter:
     satuan: fraksi durasi
     alasan: "Harga setelah nilai dibangun (fitur + bukti), sebelum CTA. Baru Tau: momen paling layak tonton ulang < 75% durasi."
     sumber: [BT-BASELINE]
+  harga.tampilkan_harga_coret:
+    status: default
+    kunci: compliance
+    nilai: false
+    pilihan: [false]
+    alasan: "Harga coret dan persen diskon tidak pernah tampil. Paket data 2026-10-19: kipas Rp199rb → Rp26,9rb (−86%) terindikasi inflasi diskon; persen diskon juga basi lebih cepat dari harga."
+    sumber: [DATA-2026-10-19]
   bukti.format:
     status: default
     kunci: compliance
