@@ -190,21 +190,40 @@ def cmd_vo(a):
             "sisa_kuota_harian_server": d.get("sisa_kuota_harian_server")}
 
 
-def cmd_render(a):
-    folder = Path(a.folder)
-    isi, vo = _isi(folder), _vo(folder)
-    if isi.get("timing") != "vo":
-        raise SlateError("isi.json masih memakai timing perkiraan; jalankan siapkan_film.py --vo %s/vo.json dulu" % folder)
-    film = (AKAR / "templates" / a.template / "film.js").read_text(encoding="utf-8")
-    tambahan = {"isi.json": (folder / "isi.json").read_text(encoding="utf-8"),
-                "foto.json": (folder / "foto.json").read_text(encoding="utf-8")}
+def _bahan_film(folder, a):
+    """(film_js, file_tambahan) untuk template atau film yang disutradarai (--film, ADR-P06). Folder aset/ selalu ikut
+    sebagai aset/<nama>; isi.json/foto.json hanya untuk template."""
+    folder = Path(folder)
+    if a.film:
+        film = Path(a.film).read_text(encoding="utf-8")
+        tambahan = {}
+    else:
+        film = (AKAR / "templates" / a.template / "film.js").read_text(encoding="utf-8")
+        tambahan = {f: (folder / f).read_text(encoding="utf-8") for f in ("isi.json", "foto.json")}
+    if (folder / "aset").is_dir():
+        for f in sorted((folder / "aset").iterdir()):
+            if f.suffix in (".js", ".json", ".css", ".svg", ".txt"):
+                tambahan["aset/" + f.name] = f.read_text(encoding="utf-8")
     total = sum(len(x.encode("utf-8")) for x in [film, *tambahan.values()])
     if total > MAKS_FILM:
         raise SlateError("file film %d byte, batas renderer Slate %d" % (total, MAKS_FILM))
+    return film, tambahan
+
+
+def cmd_render(a):
+    folder = Path(a.folder)
+    isi, vo = _isi(folder), _vo(folder)
+    if not a.film and isi.get("timing") != "vo":
+        raise SlateError("isi.json masih memakai timing perkiraan; jalankan siapkan_film.py --vo %s/vo.json dulu" % folder)
+    film, tambahan = _bahan_film(folder, a)
     p = isi["params"]
-    args = {"job_id": vo["job_id"], "film_js": film, "kit": "none", "file_tambahan": tambahan, "fps": p["motion.fps"],
-            "durasi": isi["dur"], "musik": "pelan" if p["musik.ada"] else "mati", "subtitle": False,
+    partitur = Path(a.partitur) if a.partitur else folder / "score.json"
+    args = {"job_id": vo["job_id"], "film_js": film, "kit": a.kit or "none", "file_tambahan": tambahan,
+            "fps": a.fps or p["motion.fps"], "durasi": a.durasi or isi["dur"],
+            "musik": a.musik or ("pelan" if p["musik.ada"] else "mati"), "subtitle": False,
             "telegram": False, "qa_wajib": True}
+    if a.film and partitur.is_file():
+        args["partitur_json"] = partitur.read_text(encoding="utf-8")
     d = panggil_json("render_film", args)
     (folder / "render.json").write_text(json.dumps(tanpa_link(d), ensure_ascii=False, indent=2), encoding="utf-8")
     return tanpa_link(d)
@@ -237,11 +256,9 @@ def cmd_qa(a):
 
 def cmd_pratinjau(a):
     folder = Path(a.folder)
-    _isi(folder)
-    film = (AKAR / "templates" / a.template / "film.js").read_text(encoding="utf-8")
-    tambahan = {f: (folder / f).read_text(encoding="utf-8") for f in ("isi.json", "foto.json")}
-    content = panggil("pratinjau_film", {"film_js": film, "waktu": [float(x) for x in a.t.split(",")], "kit": "none",
-                                         "file_tambahan": tambahan}, timeout=600)
+    film, tambahan = _bahan_film(folder, a)
+    content = panggil("pratinjau_film", {"film_js": film, "waktu": [float(x) for x in a.t.split(",")],
+                                         "kit": a.kit or "none", "file_tambahan": tambahan}, timeout=600)
     for c in content:
         if c.get("type") == "image":
             keluar = Path(a.keluar or folder / "pratinjau_slate.jpg")
@@ -261,6 +278,12 @@ def main(argv=None):
     s = sub.add_parser("render")
     s.add_argument("folder")
     s.add_argument("--template", default="kartu")
+    s.add_argument("--film", help="film.js sendiri (video yang disutradarai); aset/ dan score.json folder ikut")
+    s.add_argument("--kit", help="kit Slate, mis. midcentury")
+    s.add_argument("--partitur", help="score.json (bawaan <folder>/score.json, hanya dengan --film)")
+    s.add_argument("--durasi", type=float, help="META.dur film (bawaan isi.json dur)")
+    s.add_argument("--fps", type=int)
+    s.add_argument("--musik", choices=["pelan", "sedang", "mati"])
     s = sub.add_parser("tunggu")
     s.add_argument("folder")
     s.add_argument("--maks", type=int, default=540)
@@ -271,6 +294,8 @@ def main(argv=None):
     s.add_argument("--t", required=True)
     s.add_argument("--keluar")
     s.add_argument("--template", default="kartu")
+    s.add_argument("--film")
+    s.add_argument("--kit")
     a = ap.parse_args(argv)
     try:
         hasil = {"kuota": cmd_kuota, "vo": cmd_vo, "render": cmd_render, "tunggu": cmd_tunggu, "qa": cmd_qa,
