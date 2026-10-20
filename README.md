@@ -7,6 +7,8 @@ Repo ini mencontek pipeline Baru Tau di server ini (`/data/apps/baru-tau-autopil
 | Path | Isi |
 |---|---|
 | `docs/TODO.md` | Status, keputusan pemilik, dan urutan kerja berikutnya |
+| `series/BIBLE.md`, `series/BASELINE.md` | Standar kreatif dan batas bawah kualitas video (minimal setara *Baru Tau.*) |
+| `docs/13-acuan-kualitas-video.md` | Sumber acuan kualitas: Baru Tau, lemo-opuscar, skill motion graphics, panduan platform, data |
 | `docs/12-optimization-and-experiments.md` | Kritik rencana, parameter, sistem eksperimen, ide, optimasi teknis |
 | `docs/adr/ADR-P0*.md` | Usulan yang mengubah keputusan inti (P01–P05, status *Proposed*) |
 | `config/video-params.yaml` | Registry semua parameter video (nilai, rentang, alasan, sumber, kunci compliance) dan eksperimen |
@@ -14,7 +16,8 @@ Repo ini mencontek pipeline Baru Tau di server ini (`/data/apps/baru-tau-autopil
 | `tools/paket.py` | Baca dan validasi paket data produk dari sesi Claude in Chrome |
 | `tools/siapkan_film.py` | Naskah + produk + snapshot → `isi.json`, `foto.json`, `naskah.txt`, `scenes.json` |
 | `tools/pratinjau.py` | Pratinjau lokal (contact sheet / frame) dengan Chromium headless, tanpa Slate |
-| `templates/kartu/film.js` | Template film (prototipe ADR-P05) untuk render Slate |
+| `tools/slate.py` | Slate Studio per folder video: kuota, VO, render, tunggu, QA, pratinjau |
+| `templates/kartu/film.js` | Template film prototipe (ADR-P05, digantikan ADR-P06): hanya untuk pratinjau tahap naskah |
 
 Alur saat ini (paket data di luar repo, mis. `/data/apps/affiliate-data/<tanggal>/`):
 

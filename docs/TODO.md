@@ -73,6 +73,11 @@ Format ini menjadi patokan input frontend (§3).
 
 ## 4. Keputusan pemilik (yang lain menunggu ini)
 
+- [ ] **[pemilik]** **ADR-P06: video disutradarai per produk dengan metode Baru Tau** (menggantikan template, ADR-P05). Uji template `kartu` 20 Oktober dinilai jelek. Standar baru: `series/BIBLE.md`, `series/BASELINE.md`, acuan `docs/13-acuan-kualitas-video.md`. Konsekuensi:
+  - satu sesi kreator Opus per video,
+  - realistis 1–3 video per hari,
+  - angka volume dan eksperimen di doc 12 perlu dihitung ulang.
+
 - [x] **[pemilik]** Gambar 2026-10-19: diunduh ulang dengan `fetch_images_zip.py` (disetujui pemilik 20 Oktober).
 - [ ] **[pemilik]** Paket berikutnya: sertakan gambar di zip, atau jalankan `fetch_images_zip.py` sebagai langkah tetap. Folder Download Chromium (`/data/storage/chrome-webgui/Downloads`, milik `opc`, mode 700) belum terbaca user `ubuntu`. Kalau mau dipakai langsung, beri izin baca grup/ACL, misalnya `setfacl -R -m u:ubuntu:rX`; Claude tidak mengubah izin folder profil browser tanpa diminta.
 - [x] **[pemilik]** Lokasi paket data di server: `/data/apps/affiliate-data/<tanggal>/` (di luar repo; repo publik).
@@ -95,14 +100,21 @@ Format ini menjadi patokan input frontend (§3).
 1. [x] **[Claude]** **Loader + validator paket data:** `tools/paket.py` (folder atau zip, produk ditolak/peringatan, `kategori_diatur`, angka di `video_angle` yang tidak ada di `key_features`, umur harga). Paket 2026-10-19: 9/9 siap. Tes dengan fixture yang disamarkan (`tests/fixture.py`).
 2. [x] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret`, `compliance.kategori_diatur`, `disclosure.teks` (dikunci), `foto.embed_total_maks_kb`. Zona aman Shopee Video masih angka sementara (480 px) sampai diukur.
 3. [ ] **[Claude]** **Generator naskah:** satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
-4. [~] **[Claude]** **Template `film.js`** (ADR-P05). Prototipe `templates/kartu/film.js`:
+3b. [ ] **[Claude]** **Pipeline kreator per video (ADR-P06)**, mencontek Baru Tau:
+   - `CLAUDE.md` aff_studio untuk Mode PRODUKSI affiliate,
+   - salinan `audit_film.py` dan pola ledger,
+   - `slate_score.py` untuk partitur,
+   - kit kecil `kits/affiliate/aff.js` (disclosure, slab caption, cutout + bayangan kontak, cap bukti, end card).
+3c. [ ] **[Claude]** **Cutout produk otomatis:** rembg `isnet-general-use` (+ ViTMatte untuk tepi terbaik), di CPU sekitar 0,3–1,7 detik per foto (doc 13 §6), plus deteksi teks foto. Butuh `pip install rembg` dan unduhan model (±170 MB).
+3d. [ ] **[Claude]** **Video pertama yang disutradarai** (usulan: Keset atau Hanasui), lewat critic loop penuh dan perbandingan baseline dengan Baru Tau #003. Lalu pemilik menilai.
+4. [x] **[Claude]** **Template `film.js`** (ADR-P05, **digantikan ADR-P06**; sekarang hanya untuk pratinjau tahap naskah). Prototipe `templates/kartu/film.js`:
    - kartu foto di atas latar warna dari foto cover, Ken Burns ke titik fokus, crop detail di beat panjang, punch-in di kata yang disorot caption,
    - teks kunci per beat, chip bukti dari data feed, caption per frasa dari timing kata, label disclosure persisten.
 
    Bahan disusun `tools/siapkan_film.py` dan dipratinjau lokal dengan `tools/pratinjau.py`. Naskah contoh untuk Hanasui, Keset, dan Kipas ada di `/data/apps/affiliate-data/2026-10-19/naskah/` (di luar repo).
 
-   **Render penuh pertama (20 Oktober), Hanasui:**
-   - job `2026-10-20-dfe4ae`, **QA Slate lolos**,
+   **Render penuh pertama (20 Oktober), Hanasui:** lolos QA teknis, tapi **dinilai jelek oleh pemilik** (analisis di BIBLE "Pelajaran dari uji 20 Oktober").
+   - job `2026-10-20-dfe4ae`, QA Slate lolos,
    - 20,17 detik, 30 fps, −14,0 LUFS, tanpa frame beku, frame hitam, atau kedip berbahaya,
    - kontras 12,9–21:1,
    - VO 292 karakter / 19,34 detik, render 605 frame dalam sekitar 95 detik,

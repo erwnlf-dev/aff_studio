@@ -1,6 +1,6 @@
 # ADR-P05: `film.js` template berbasis snapshot, bukan sesi kreator per video
 
-- **Status:** Proposed (20 Oktober 2026). Nomor final mengikuti urutan ADR proyek.
+- **Status:** Digantikan ADR-P06 (20 Oktober 2026): prototipe template lolos QA teknis tapi dinilai pemilik di bawah standar Baru Tau. Dipertahankan sebagai catatan alasan.
 - **Menyentuh:** stack, yaitu cara film dibuat (pipeline Baru Tau yang dicontek).
 - **Dirujuk dari:** doc 12, K14, §5.1.
 

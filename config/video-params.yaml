@@ -36,6 +36,8 @@ sumber:
   R-SHORTS-BENCH: "Panduan pihak ketiga Shorts (subscribr.ai, contentstudio.io, socialmediaexaminer.com): tidak ada ambang resmi; bandingkan dengan video sendiri"
   R-ELEVEN: "ElevenLabs docs 'Prompting Eleven v3': stability = preset Creative/Natural/Robust; v2 punya stability/similarity/style/speed kontinu"
   TEKNIS: "Alasan teknis render/encode (dijelaskan di doc 12 §5)"
+  R-PLAYHEAD: "Playhead, 19 video viral TikTok Shop (Mei–Sep 2026): produk terlihat median 0,07 s, bukti median 2,73 s, tanpa wajah median 13,5 s (tryplayhead.com/blog/tiktok-shop-hooks; doc 13 §4)"
+  VM-PLATFORMS: "/data/apps/video-maker/config/platforms.json: zona aman px per platform (belum diverifikasi ke platform; doc 13 §5)"
   DATA-2026-10-19: "Paket data pemilik affiliate_pipeline_data_2026-10-19.zip (9 produk shortlist); temuan di docs/TODO.md §3"
 
 hipotesis:
@@ -71,11 +73,11 @@ parameter:
   # ---------------------------------------------------------------- durasi dan beat
   durasi.target_detik:
     status: eksperimen
-    nilai: 22
+    nilai: 20
     rentang: [12, 45]
     satuan: detik
-    alasan: "Baru Tau 35–45 s cocok untuk explainer 7 bagian; video produk punya lebih sedikit unit informasi. 22 s = 8 beat × ~2,75 s, masih di ritme 2–4 s per visual."
-    sumber: [BT-BIBLE, BT-VIRAL, H01]
+    alasan: "Video TikTok Shop viral tanpa wajah median 13,5 s (Playhead, 19 video); Shopee Video 12–20 s; Baru Tau 35–45 s untuk explainer. 20 s = 6 bagian × ~3,3 s (doc 13 §4, BIBLE affiliate)."
+    sumber: [BT-BIBLE, R-PLAYHEAD, H01]
     eksperimen: EXP-01
   durasi.ekor_loop_detik:
     status: default
@@ -353,25 +355,25 @@ parameter:
     sumber: [BT-BASELINE, BT-SLATE]
   zona_aman.tiktok.bawah_px:
     status: default
-    nilai: 480
-    rentang: [380, 560]
+    nilai: 320
+    rentang: [280, 560]
     satuan: px dari bawah
-    alasan: "TikTok menaruh caption, nama akun, dan anchor produk di bawah. Angka perkiraan; wajib dicek dengan screenshot UI terbaru sebelum MVP dikunci."
-    sumber: [TEKNIS]
+    alasan: "video-maker platforms.json (TikTok bawah 320). Belum diverifikasi ke UI terbaru, termasuk anchor produk TikTok Shop."
+    sumber: [VM-PLATFORMS]
   zona_aman.tiktok.kanan_px:
     status: default
     nilai: 140
     rentang: [100, 180]
     satuan: px dari kanan
-    alasan: "Kolom ikon like/comment/share. Perkiraan; cek screenshot."
-    sumber: [TEKNIS]
+    alasan: "video-maker platforms.json (kolom ikon kanan 140)."
+    sumber: [VM-PLATFORMS]
   zona_aman.reels.bawah_px:
     status: default
-    nilai: 420
+    nilai: 450
     rentang: [320, 520]
     satuan: px dari bawah
-    alasan: "Perkiraan; cek screenshot. Satu file untuk semua platform berarti memakai zona terketat (lihat doc 12 §3.4)."
-    sumber: [TEKNIS]
+    alasan: "video-maker platforms.json (Reels bawah 450). Hanya berlaku kalau video dibuat untuk Reels."
+    sumber: [VM-PLATFORMS]
   zona_aman.threads.bawah_px:
     status: default
     nilai: 440
@@ -381,26 +383,26 @@ parameter:
     sumber: [BT-BASELINE]
   zona_aman.shopee_video.bawah_px:
     status: default
-    nilai: 480
+    nilai: 320
     rentang: [300, 640]
     satuan: px dari bawah
-    alasan: "Platform fase 1. BELUM DIUKUR: sementara memakai angka TikTok (tombol produk dan caption di bawah). Ganti setelah screenshot UI Shopee Video (TODO §5)."
-    sumber: [TEKNIS]
+    alasan: "Platform fase 1. BELUM DIUKUR: sementara memakai angka TikTok dari video-maker platforms.json. Ganti setelah screenshot UI Shopee Video (TODO §5)."
+    sumber: [VM-PLATFORMS]
   zona_aman.atas_px:
     status: default
-    nilai: 160
+    nilai: 150
     rentang: [120, 260]
     satuan: px dari atas
-    alasan: "Tab dan status bar di semua platform. Perkiraan; cek screenshot."
-    sumber: [TEKNIS]
+    alasan: "video-maker platforms.json: TikTok atas 150 (Reels 220, Threads 250 lebih ketat; dipakai kalau video untuk platform itu)."
+    sumber: [VM-PLATFORMS]
 
   # ---------------------------------------------------------------- gerak
   motion.fps:
     status: default
-    nilai: 30
+    nilai: 24
     pilihan: [24, 30]
-    alasan: "Baru Tau 24 fps (bawaan Slate) cocok untuk animasi terbatas. Ken Burns adalah pan/zoom pelan yang kontinu; di 24 fps gerak lambat lebih mudah terlihat patah. Biaya: waktu render Slate ≈ dur × fps / worker × 0,35 s, jadi +25% (22 s: ~77 s vs ~62 s dengan 3 worker). Turunkan ke 24 kalau tes mata di HP tidak menemukan patah (doc 12 §5)."
-    sumber: [TEKNIS, H11]
+    alasan: "Video disutradarai seperti Baru Tau (ADR-P06): animasi terbatas 24 fps, tabel 'Gerak dalam angka' BIBLE Baru Tau ditulis dalam frame 24 fps, dan render ~20% lebih cepat dari 30 fps. 30 fps hanya untuk template kartu (Ken Burns), yang tidak lagi dipakai untuk video unggahan."
+    sumber: [BT-BIBLE, TEKNIS]
   motion.kenburns.zoom_per_detik:
     status: default
     nilai: 0.03
@@ -787,7 +789,7 @@ eksperimen:
   EXP-01:
     judul: "Durasi total"
     status: antre
-    lengan: {A: {durasi.target_detik: 22}, B: {durasi.target_detik: 15}, C: {durasi.target_detik: 35}}
+    lengan: {A: {durasi.target_detik: 20}, B: {durasi.target_detik: 15}, C: {durasi.target_detik: 28}}
     metrik_utama: komisi_per_1000_views
     metrik_diagnosis: [avg_watch_pct, completion, ctr_link]
     pengaman: [hold_3s]
