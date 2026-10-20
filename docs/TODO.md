@@ -27,7 +27,8 @@ Format ini menjadi patokan input frontend (§3).
 - [x] `config/video-params.yaml` + `tools/cek_params.py` + tes: registry parameter, snapshot, `variant_id`.
 - [x] ADR-P01–P05 berstatus *Proposed*.
 - [x] Branch `main` jadi default; pekerjaan berikutnya lewat PR.
-- [x] Paket data 2026-10-19 dibaca: 9 produk `link_ready` (temuan di §3).
+- [x] Paket data 2026-10-19 dibaca: 9 produk `link_ready` (temuan di §3); 71 gambar diunduh ulang.
+- [x] `tools/paket.py`, `tools/siapkan_film.py`, `tools/pratinjau.py`, prototipe `templates/kartu/film.js` + tes (MVP butir 1, 2, dan sebagian 4).
 
 ## 3. Temuan dari paket data 2026-10-19
 
@@ -56,7 +57,17 @@ Format ini menjadi patokan input frontend (§3).
 4. **`compliance_note` mencampur aturan compliance dengan catatan bisnis.** Contoh catatan bisnis: "dorong bundling 5+1"; contoh aturan: "jangan tonjolkan % diskon". Usulannya: dua field, `compliance_note` (aturan, wajib dipatuhi) dan `business_note` (saran).
 5. **Harga coret bisa menyesatkan.** Contohnya kipas: Rp199rb → Rp26,9rb (−86%). Aturan baru (dikunci): harga coret dan persen diskon tidak pernah tampil (`harga.tampilkan_harga_coret = false`).
 6. **Platform fase 1 = Shopee Video** (roadmap di `CONTEXT.md`), bukan TikTok/Threads. Zona aman Shopee Video belum diukur.
-7. **Repo ini publik.** Paket data mentah tidak di-commit: ada email pemilik di `CONTEXT.md`, link affiliate, dan data toko. Tes memakai fixture yang sudah disamarkan.
+7. **Teks yang tercetak di foto penjual ikut tampil di video, dan sering bertentangan dengan data produk.** Contoh:
+   - Kipas: foto 6 "16900 r/min" (data: 23.000 RPM); foto 0 "100 level" dan "UP to 10H" (data: 6 level, 2,5–20 jam); foto 7 "10.7 Hrs".
+   - Keset: foto 2 "1S/5S/10S" dan foto 1 "bebas formaldehida" (tidak ada di fitur).
+   - Hanasui: cover "Dermatologically tested" (tidak ada di fitur).
+
+   Teks di layar adalah klaim, apa pun asalnya. Akibatnya:
+   - generator naskah memilih foto dan crop yang tidak memuat teks bertentangan,
+   - QA compliance membaca teks foto dengan OCR (butir 12),
+   - foto yang bertentangan ditandai, misalnya `foto.tolak`, di kartu naskah tahap 1.
+8. **Angka di caption masih ditulis dengan huruf** ("dua puluh tiga ribu"), karena caption = teks VO. Generator naskah perlu menulis dua versi per kalimat: `vo` (angka dengan huruf, untuk TTS) dan `layar` (digit, untuk caption), seperti aturan Baru Tau.
+9. **Repo ini publik.** Paket data mentah tidak di-commit: ada email pemilik di `CONTEXT.md`, link affiliate, dan data toko. Tes memakai fixture yang sudah disamarkan.
 
 ## 4. Keputusan pemilik (yang lain menunggu ini)
 
@@ -79,15 +90,21 @@ Format ini menjadi patokan input frontend (§3).
 
 ## 6. MVP (urut)
 
-1. [ ] **[Claude]** **Loader + validator paket data:** baca zip/folder, validasi skema `meta.json`, tolak produk tanpa `affiliate_link`/gambar, turunkan `category_regulated`, tulis antrean produk. Disertai fixture tes yang disamarkan.
-2. [ ] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret` (dikunci), zona aman Shopee Video (setelah diukur).
+1. [x] **[Claude]** **Loader + validator paket data:** `tools/paket.py` (folder atau zip, produk ditolak/peringatan, `kategori_diatur`, angka di `video_angle` yang tidak ada di `key_features`, umur harga). Paket 2026-10-19: 9/9 siap. Tes dengan fixture yang disamarkan (`tests/fixture.py`).
+2. [x] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret`, `compliance.kategori_diatur`, `disclosure.teks` (dikunci), `foto.embed_total_maks_kb`. Zona aman Shopee Video masih angka sementara (480 px) sampai diukur.
 3. [ ] **[Claude]** **Generator naskah:** satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
-4. [ ] **[Claude]** **Template `film.js` `masalah_solusi`** (ADR-P05):
-   - kartu produk dari `transparent_bg`/cover di atas latar warna, Ken Burns, caption dari timing kata, label disclosure persisten,
-   - diuji dengan 3 produk shortlist sampai lolos BASELINE Baru Tau + `audit_film.py`.
+4. [~] **[Claude]** **Template `film.js`** (ADR-P05). Prototipe `templates/kartu/film.js` sudah ada:
+   - kartu foto di atas latar warna dari foto cover, Ken Burns ke titik fokus, crop detail di beat panjang, punch-in di kata disorot,
+   - teks kunci per beat, chip bukti dari data feed, caption per frasa dari timing kata, label disclosure persisten.
 
-   Prototipe bisa dimulai sebelum ADR diputuskan.
-5. [ ] **[Claude]** **Integrasi Slate:** `buat_voiceover`, `pratinjau_film`, `render_film`, `qa_video` lewat helper seperti `baru-tau-autopilot/tools/slate.py`, dengan foto sebagai base64 JSON (maks 2 MB per file, 8 MB total).
+   Bahan disusun `tools/siapkan_film.py` (`isi.json` + `foto.json` + `naskah.txt` + `scenes.json`), dan dipratinjau lokal dengan `tools/pratinjau.py` (Chromium headless, tanpa Slate). Sudah dicoba dengan naskah contoh untuk Hanasui, Keset, dan Kipas (`/data/apps/affiliate-data/2026-10-19/naskah/`, di luar repo): durasi 19–22 detik, 257–292 karakter VO.
+
+   **Belum:**
+   - render penuh lewat Slate + `qa_video`,
+   - penilaian BASELINE di HP,
+   - transisi selain potong keras,
+   - loop ke frame 0.
+5. [ ] **[Claude]** **Integrasi Slate:** `buat_voiceover`, `pratinjau_film`, `render_film`, `qa_video` lewat helper seperti `baru-tau-autopilot/tools/slate.py`, dengan foto sebagai base64 JSON. Batas renderer Slate 2 MB **total** untuk semua file film (bukan 8 MB seperti helper Baru Tau).
 6. [ ] **[Claude]** **QA compliance:**
    - setiap kalimat naskah punya sumber,
    - angka di layar ⊂ data produk,

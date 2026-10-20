@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>html,body{margin:0;background:#1b1b1f;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="out"></canvas>
+<script type="module">
+// Pratinjau lokal (tools/pratinjau.py): film.js dirender di beberapa t lalu disusun jadi contact sheet.
+// Font yang dimuat sama dengan halaman render Slate (renderer.FONT_LOADS).
+const q = new URLSearchParams(location.search);
+const waktu = q.get('t').split(',').map(Number);
+const kol = Number(q.get('kol') || waktu.length);
+const skala = Number(q.get('skala') || 0.25);
+const label = q.get('label') !== '0';
+const FONTS = JSON.parse(q.get('fonts') || '[]');
+await Promise.all(FONTS.map(f => document.fonts.load(f).catch(() => null)));
+await document.fonts.ready;
+const F = await import('./film.js');
+const src = document.createElement('canvas');
+src.width = 1080; src.height = 1920;
+const ctx = src.getContext('2d');
+const tw = Math.round(1080 * skala), th = Math.round(1920 * skala), lab = label ? 30 : 0;
+const baris = Math.ceil(waktu.length / kol);
+const out = document.getElementById('out');
+out.width = kol * tw; out.height = baris * (th + lab);
+const o = out.getContext('2d');
+o.fillStyle = '#1b1b1f'; o.fillRect(0, 0, out.width, out.height);
+waktu.forEach((t, n) => {
+  ctx.save(); F.renderFilm(ctx, t); ctx.restore();
+  const x = (n % kol) * tw, y = Math.floor(n / kol) * (th + lab);
+  o.drawImage(src, x, y, tw, th);
+  if (label) { o.fillStyle = '#ddd'; o.font = '600 20px Inter'; o.fillText('t = ' + t.toFixed(2) + ' s', x + 8, y + th + 21); }
+});
+document.title = 'siap';
+</script>
+</body>
+</html>
