@@ -6,6 +6,11 @@ Repo ini mencontek pipeline Baru Tau di server ini (`/data/apps/baru-tau-autopil
 
 | Path | Isi |
 |---|---|
+| `CLAUDE.md` | Instruksi kreator: Mode PRODUKSI satu video affiliate (langkah 0–12) |
+| `run_produksi.sh` | Produksi headless satu produk: init, sesi kreator Claude Code (model/izin dikunci), cek sesi |
+| `tools/produksi.py` | Satu pintu langkah produksi: init, cutout, naskah, vo, kata, audit, pratinjau, skor, render, sheet, status |
+| `tools/sunyi.py` | Ukur jendela sunyi `vo.mp3` → `kata_koreksi.json` (onset kata yang benar) |
+| `kits/affiliate/aff.js` | Kit film affiliate (cutout + blend, disclosure, caption, cap, transisi, loop), dikirim sebagai `engine/aff.js` |
 | `docs/TODO.md` | Status, keputusan pemilik, dan urutan kerja berikutnya |
 | `series/BIBLE.md`, `series/BASELINE.md` | Standar kreatif dan batas bawah kualitas video (minimal setara *Baru Tau.*) |
 | `docs/13-acuan-kualitas-video.md` | Sumber acuan kualitas: Baru Tau, lemo-opuscar, skill motion graphics, panduan platform, data |
@@ -22,7 +27,13 @@ Repo ini mencontek pipeline Baru Tau di server ini (`/data/apps/baru-tau-autopil
 | `examples/aff001-keset/` | Video pertama yang disutradarai: naskah, brief, film, partitur, ledger, cek akhir |
 | `templates/kartu/film.js` | Template film prototipe (ADR-P05, digantikan ADR-P06): hanya untuk pratinjau tahap naskah |
 
-Alur saat ini (paket data di luar repo, mis. `/data/apps/affiliate-data/<tanggal>/`):
+Produksi satu video (sesi kreator headless):
+
+```
+./run_produksi.sh /data/apps/affiliate-data/2026-10-19 41671303438 ["catatan pemilik"]
+```
+
+Atau langkah demi langkah (`python3 tools/produksi.py -h`). Alat tingkat rendah (paket data di luar repo, mis. `/data/apps/affiliate-data/<tanggal>/`):
 
 ```
 python3 tools/paket.py cek /data/apps/affiliate-data/2026-10-19

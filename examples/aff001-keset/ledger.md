@@ -86,3 +86,19 @@ Keputusan: boleh render.
 | 1 | lolos; LRA 1,2; sinkron `serap` +153 ms, `kaki_basah` +105, `balik` +106, `pental` +89 | hentakan dibuka klik/clack (attack tajam); paper/swish jadi bunyi antisipasi; level musik per bagian |
 | 2 | lolos; LRA 1,4; sinkron `serap` +153, `kaki_basah` +112 | hit `serap` dihapus (tertutup kata "nyerap"); percik sesudah benturan; kontras level lebih besar |
 | 3 (final) | lolos; LRA 1,5; sinkron `kaki_basah` +105, `balik` +106; 1 pop −2,1 dB | berhenti (QA lolos, sisa peringatan dijelaskan di cek_akhir.md) |
+
+## Versi 2 — kit affiliate + blend (20 Oktober, setelah pertanyaan pemilik "biar lebih blend in")
+
+- `film.js` dipindah ke `engine/aff.js`. Hasilnya identik piksel dengan v1 di 12 frame (selisih 0) sebelum blend dinyalakan; audit 38/0.
+- **Blend** (`produk(…, {cahaya})`):
+  - bayangan kontak blur 7 px + bayangan jatuh blur 26 px (kanan bawah), menjauh saat keset jatuh/membalik,
+  - pencahayaan ulang (sorot kiri atas, bayangan kanan bawah),
+  - tint ambien 0,08 dari warna latar tiap adegan,
+  - motif dan keset di end card `asli: true`.
+- Bandingan: `banding_blend_vs_v1.jpg`, `banding_closeup.jpg` (frame 226).
+- **Render v2 (final):** QA lolos, render 88 s (blur dihitung sekali saat muat). Peringatan:
+  - LRA 1,5 LU,
+  - 1 pop −2,1 dB,
+  - sinkron `kaki_basah` +105 ms.
+
+  v1 disimpan sebagai `final_v1.mp4`.

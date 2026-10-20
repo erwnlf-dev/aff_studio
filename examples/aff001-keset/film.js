@@ -1,12 +1,15 @@
 // Affiliate — Keset diatomite motif kucing (Shopee 55566811995). Disutradarai per produk (aff_studio ADR-P06).
 // Gaya midcentury-toon (kit Slate `midcentury`, lemo-opuscar MIT). 1080x1920, 24 fps. Murni fungsi t.
 // Timing: vo.json job 2026-10-20-9fed21, onset dikoreksi ke jendela sunyi terukur (kata_koreksi.json).
-import { PAL, setClock, shape, plane, ink, rays, ellipse, rect, rrect, spline, star, text, fit, measure, xform,
-  paperFinish, dashed, clamp, lerp, seg, ss, eo, eio, back, hash, TAU } from './engine/toon.js';
-import { drawHand } from './engine/chars.js';
+import { PAL, setClock, shape, plane, ink, rays, ellipse, rect, rrect, spline, star, text, measure, xform,
+  paperFinish, dashed, lerp, seg, ss, eo, eio, TAU } from './engine/toon.js';
+import { pop, E_in, kf, squash, cam, muatFoto, produk, tanganDi, pelat, teksKunci, labelIlustrasi, disclosure,
+  buatCaption, capKaret, cetakCap, segelRating, irisMasuk, wipe, denganLoop } from './engine/aff.js';
 import { FOTO } from './aset/foto.js';
 
+// konstanta lokal: CUES dan META tidak boleh bergantung pada impor (audit_film mengganti impor dengan stub)
 const W = 1080, H = 1920, FPS = 24;
+
 const KATA = [[0.0, 0.24, 'Keset'], [0.28, 0.56, 'kucing'], [0.62, 0.96, 'ini,'], [0.987, 1.28, 'nyerap'], [1.36, 1.72, 'air?'],
   [2.36, 2.52, 'Habis'], [2.568, 3.08, 'mandi,'], [3.12, 3.48, 'lantai'], [3.54, 3.8, 'basah'], [3.84, 3.96, 'dan'],
   [4.02, 4.52, 'licin?'], [5.14, 5.72, 'Kenalin…'], [6.12, 6.36, 'keset'], [6.413, 6.92, 'diatomite'], [6.973, 7.24, 'motif'],
@@ -33,58 +36,9 @@ export const META = {
 const LOOP_AT = 18.45, LOOP_END = 18.68;
 const AIR = PAL.blueL, AIR_D = PAL.blueD;
 
-// ------------------------------------------------------------ cutout produk: gambar, siluet tinta, bayangan, sisi bawah
-const IMG = {}, SIL = {}, BAY = {}, BAWAH = {};
-function topeng(im, isi) {
-  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
-  const g = c.getContext('2d'); g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-in'; isi(g, c.width, c.height);
-  return c;
-}
-if (typeof Image !== 'undefined') {
-  await Promise.all(Object.entries(FOTO).map(([k, v]) => new Promise(ok => {
-    const im = new Image(); im.onload = () => { IMG[k] = im; ok(); }; im.onerror = () => ok(); im.src = v.src;
-  })));
-  for (const [k, im] of Object.entries(IMG)) {
-    SIL[k] = topeng(im, (g, w, h) => { g.fillStyle = PAL.ink; g.fillRect(0, 0, w, h); });
-    BAY[k] = topeng(im, (g, w, h) => { g.fillStyle = PAL.brown; g.fillRect(0, 0, w, h); });
-    BAWAH[k] = topeng(im, (g, w, h) => {           // sisi bawah anti-slip (ilustrasi): navy berpola titik
-      g.fillStyle = '#7F8FB4'; g.fillRect(0, 0, w, h);
-      g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#C9D3EA';   // titik hanya di dalam siluet, latar tetap
-      const s = Math.max(w, h) / 34;
-      for (let y = s / 2, r = 0; y < h; y += s, r++) for (let x = (r % 2) * s / 2; x < w; x += s) { g.beginPath(); g.arc(x, y, s * 0.22, 0, TAU); g.fill(); }
-    });
-  }
-}
-function produk(ctx, nama, cx, cy, w, o = {}) {
-  const im = IMG[nama]; if (!im) return;
-  const h = w * im.height / im.width, a = o.alpha ?? 1;
-  ctx.save(); ctx.globalAlpha *= a; ctx.translate(cx, cy); ctx.rotate(o.rot || 0); ctx.scale(o.sx ?? 1, o.sy ?? 1);
-  if (o.bayang !== false) { ctx.save(); ctx.globalAlpha *= 0.3; ctx.drawImage(BAY[nama], -w / 2 + 12, -h / 2 + (o.tinggi ?? 18), w, h); ctx.restore(); }
-  for (let i = 0; i < 10; i++) { const t = i * TAU / 10; ctx.drawImage(SIL[nama], -w / 2 + Math.cos(t) * 4.5, -h / 2 + Math.sin(t) * 4.5, w, h); }
-  ctx.drawImage(o.bawah ? BAWAH[nama] : im, -w / 2, -h / 2, w, h);
-  ctx.restore();
-}
-const tinggiProduk = (nama, w) => IMG[nama] ? w * IMG[nama].height / IMG[nama].width : w * 0.75;
+await muatFoto(FOTO);
 
-// ------------------------------------------------------------ helper
-const pop = (t, t0, d = 0.28) => back(seg(t, t0, t0 + d), 1.8);
-const E_in = u => u * u;
-const kf = (t, keys, e = eio) => {
-  if (t <= keys[0][0]) return keys[0][1];
-  for (let i = 1; i < keys.length; i++) if (t <= keys[i][0]) {
-    const [t0, a] = keys[i - 1], [t1, b] = keys[i], u = (keys[i][2] || e)(seg(t, t0, t1));
-    return Array.isArray(a) ? a.map((v, j) => lerp(v, b[j], u)) : lerp(a, b, u);
-  }
-  return keys[keys.length - 1][1];
-};
-function squash(t, t0, sx = 0.12, sy = 0.1) {          // benda datar mendarat: 1,12 × 0,9 selama 2 frame lalu pegas
-  if (t < t0) return [1, 1];
-  const u = (t - t0) * FPS;
-  if (u < 2) return [1 + sx, 1 - sy];
-  const d = Math.exp(-(u - 2) * 0.35) * Math.cos((u - 2) * 0.55);
-  return [1 + sx * d, 1 - sy * d];
-}
-function cam(ctx, z, cx, cy) { ctx.translate(cx, cy); ctx.scale(z, z); ctx.translate(-cx, -cy); }
+// ------------------------------------------------------------ helper khusus video ini (lantai, air, gayung, kaki)
 function ubin(ctx, col, s = 180, o = 0) {               // lantai ubin dilihat dari atas, nat putih
   ctx.fillStyle = col; ctx.fillRect(-400, -400, W + 800, H + 800);
   for (let x = -s + o; x < W + s; x += s) ink(ctx, [[x, -300], [x, H + 300]], 5, { color: PAL.white, seed: 40 + x, taper: false, breaks: 0.12 });
@@ -116,74 +70,11 @@ function gayung(ctx, x, y, a, k = 1) {                  // gayung plastik koral:
   shape(ctx, ellipse(-100, -64, 112, 22, 30), { fill: PAL.coralD, line: 4, seed: 72, grain: 0.2 });
   ctx.restore();
 }
-function lengan(ctx, from, pergelangan, k = 1) {
-  ink(ctx, [from, pergelangan], 30 * k, { seed: 140, taper: false, wob: 0.03 });
-  ink(ctx, [from, pergelangan], 22 * k, { seed: 141, taper: false, wob: 0.03, color: PAL.coral });
-}
-function tanganDi(ctx, ujung, a, jenis, k, dari, sisi = 1) {
-  const jangkau = (jenis === 'point' ? 57 : jenis === 'grip' ? 30 : 44) * k;
-  const w = [ujung[0] - Math.cos(a) * jangkau, ujung[1] - Math.sin(a) * jangkau];
-  if (dari) lengan(ctx, dari, w, k / 2.2);
-  drawHand(ctx, w[0], w[1], a, jenis, sisi, k);
-  return w;
-}
-function pelat(ctx, str, x, y, font, o = {}) {          // kartu putih bertinta untuk teks kunci
-  const w = measure(ctx, str, font) + (o.pad ?? 48), px = parseInt(font.match(/(\d+)px/)[1], 10), h = px * 1.34;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(o.rot ?? 0); ctx.scale(o.k ?? 1, o.k ?? 1);
-  shape(ctx, rrect(-w / 2, -h / 2, w, h, 14), { fill: o.fill ?? PAL.white, line: 4, seed: o.seed ?? 760, grain: 0.12, off: [6, 5] });
-  text(ctx, str, 0, px * 0.36, { font, fill: o.color ?? PAL.ink, align: 'center' });
-  ctx.restore();
-}
-function teksKunci(ctx, t, t0, str, y = 330) {
-  const k = pop(t, t0, 0.28); if (k <= 0) return;
-  pelat(ctx, str, W / 2, y, '92px Slab', { k, rot: -0.02, seed: 770 + str.length });
-}
-function labelIlustrasi(ctx, x, y) { text(ctx, 'ilustrasi', x, y, { font: '600 30px Jost', fill: PAL.ink, plate: PAL.white, off: [3, 3] }); }
-
-// ------------------------------------------------------------ disclosure (setiap frame) + caption
-function disclosure(ctx) {
-  const font = '600 34px Jost', w = measure(ctx, 'Link afiliasi', font) + 64;
-  ctx.save(); ctx.translate(60, 175);
-  shape(ctx, [[0, 0], [w - 22, 0], [w, 28], [w - 22, 56], [0, 56]], { fill: PAL.white, line: 3.4, seed: 980, grain: 0.1, breaks: 0, off: [4, 4] });
-  shape(ctx, ellipse(w - 30, 28, 7, 7, 14), { fill: PAL.kraftL, line: 2.6, seed: 981, off: [0, 0] });
-  text(ctx, 'Link afiliasi', 20, 40, { font, fill: PAL.ink });
-  ctx.restore();
-}
+// ------------------------------------------------------------ caption
 // [kata awal, kata akhir, kata disorot]; angka sebagai digit di caption
 const CAP = [[0, 4, 3], [5, 10, 10], [11, 15, 13], [16, 21, 21], [22, 26, 23], [27, 31, 29], [32, 37, 36]];
 const DIGIT = { 29: '10' };
-const CHUNKS = CAP.map(([a, b, s]) => ({ toks: KATA.slice(a, b + 1).map((k, j) => [DIGIT[a + j] ?? k[2], a + j, a + j === s]), a: KATA[a][0], b: KATA[b][1] }));
-CHUNKS.forEach((c, i) => { const nx = CHUNKS[i + 1]; c.end = nx ? Math.min(nx.a, c.b + 0.5) : META.dur; });
-function caption(ctx, t) {
-  const c = CHUNKS.find(q => t >= Math.max(0, q.a - 0.04) && t < q.end); if (!c) return;
-  const a = c.a <= 0 ? 1 : Math.min(ss(seg(t, c.a - 0.04, c.a + 0.08)), c.end >= META.dur ? 1 : 1 - ss(seg(t, c.end - 0.1, c.end)));
-  if (a <= 0) return;
-  const str = c.toks.map(q => q[0]).join(' ');
-  const f = fit(ctx, str, '600 {px}px Jost', 68, 900, 2, 64);
-  const sp = measure(ctx, ' ', f.font), lh = f.px * 1.2;
-  const w = Math.max(...f.lines.map(l => measure(ctx, l, f.font))) + 96, h = 34 + f.lines.length * lh, x = W / 2 - w / 2, y = 1470 - h;
-  ctx.save(); ctx.globalAlpha *= a; ctx.translate(0, (1 - a) * 12);
-  shape(ctx, rrect(x, y, w, h, 16), { fill: PAL.paper, line: 3.4, seed: 901, grain: 0.12, breaks: 0.06, off: [5, 5] });
-  star(ctx, x + 26, y + h / 2, 11, { n: 8, inner: 0.42, fill: PAL.mustard, off: [0, 0] });
-  star(ctx, x + w - 26, y + h / 2, 11, { n: 8, inner: 0.42, fill: PAL.mustard, off: [0, 0] });
-  let ti = 0;
-  f.lines.forEach((l, li) => {
-    const words = l.split(' '), ws = words.map(wd => measure(ctx, wd, f.font));
-    let xx = W / 2 - (ws.reduce((p, q) => p + q, 0) + sp * (words.length - 1)) / 2;
-    const by = y + 17 + f.px * 0.92 + li * lh;
-    words.forEach((wd, j) => {
-      const tok = c.toks[ti++];
-      if (tok && tok[2]) {
-        const k = clamp(back(seg(t, KATA[tok[1]][0] - 0.02, KATA[tok[1]][0] + 0.22), 1.6), 0, 1.15);
-        if (k > 0) { ctx.save(); ctx.translate(xx + ws[j] / 2, by - f.px * 0.33); ctx.scale(k, k);
-          shape(ctx, rrect(-ws[j] / 2 - 9, -f.px * 0.62, ws[j] + 18, f.px * 1.12, 9), { fill: PAL.mustard, line: 0, off: [3, 3], grain: 0.1, seed: 905 + j }); ctx.restore(); }
-      }
-      text(ctx, wd, xx, by, { font: f.font, fill: PAL.ink });
-      xx += ws[j] + sp;
-    });
-  });
-  ctx.restore();
-}
+const caption = buatCaption(KATA, CAP, { digit: DIGIT, dur: META.dur });
 
 // ------------------------------------------------------------ 1. HOOK (0 – 2,333): gayung meneteskan air, keset menyerapnya
 const KS1 = { x: 540, y: 1080, w: 820, rot: -0.1 };
@@ -192,7 +83,7 @@ function gayungSudut1(t) { return kf(t, [[0, -0.42], [0.12, -0.56, eo], [0.25, -
 function sceneHook(ctx, t) {
   ctx.save(); cam(ctx, 1 + 0.04 * ss(seg(t, 0, 2.333)), 540, 1000);
   ubin(ctx, PAL.tealL);
-  produk(ctx, 'keset', KS1.x, KS1.y, KS1.w, { rot: KS1.rot });
+  produk(ctx, 'keset', KS1.x, KS1.y, KS1.w, { rot: KS1.rot, cahaya: PAL.tealL });
   // tetes 1: lepas 0,2 → mendarat C.hook_tetes; tetes 2: lepas 1,15 → C.hook_tetes_2
   [[0.2, C.hook_tetes, [580, 1010]], [1.15, C.hook_tetes_2, [470, 1110]]].forEach(([t0, t1, p], i) => {
     if (t >= t0 && t < t1) {
@@ -281,7 +172,7 @@ function sceneProduk(ctx, t) {
   });
   const y = kf(t, [[5.0, 330], [C.keset_jatuh, KS3.y, E_in]]);
   const [sx, sy] = squash(t, C.keset_jatuh);
-  produk(ctx, 'keset', KS3.x, y, KS3.w * (t < C.keset_jatuh ? 1.12 : 1), { sx, sy, tinggi: t < C.keset_jatuh ? 60 : 18 });
+  produk(ctx, 'keset', KS3.x, y, KS3.w * (t < C.keset_jatuh ? 1.12 : 1), { sx, sy, tinggi: t < C.keset_jatuh ? 140 : 18, cahaya: PAL.mustardL });
   // "motif kucing": cincin tinta digambar mengelilingi kepala kucing + label
   if (t >= C.motif) {
     const u = eo(seg(t, C.motif, C.motif + 0.35));
@@ -299,7 +190,7 @@ const BIBIR4 = [680, 620];
 function sceneFitur1(ctx, t) {
   ctx.save(); cam(ctx, 1 + 0.04 * ss(seg(t, 8.333, 11.167)), 520, 1000);
   ubin(ctx, PAL.blueL, 170, 40);
-  produk(ctx, 'keset', KS4.x, KS4.y, KS4.w, { rot: KS4.rot });
+  produk(ctx, 'keset', KS4.x, KS4.y, KS4.w, { rot: KS4.rot, cahaya: PAL.blueL });
   const a = kf(t, [[8.333, -0.3], [8.36, -0.44, eo], [8.42, 0.02, eio], [9.2, 0.0], [9.6, -0.3, eio]]);
   [[8.4, C.tetes_1, [520, 960]], [8.7, C.tetes_2, [380, 1100]]].forEach(([t0, t1, p], i) => {
     if (t >= t0 && t < t1) { const u = E_in(seg(t, t0, t1)); tetes(ctx, lerp(BIBIR4[0], p[0], u), lerp(BIBIR4[1] + 40, p[1], u), 30, 1 + 0.25 * u); }
@@ -339,7 +230,7 @@ function sceneFitur2(ctx, t) {
   // dorong: tangan mundur 30 px (4 frame) lalu dorong; keset bergeser 6 px dan kembali; tangan terpental di "geser."
   const geser = t < C.dorong ? 0 : 6 * Math.exp(-(t - C.dorong) * 6) * Math.cos((t - C.dorong) * 30);
   const [qx, qy] = t >= C.dorong ? squash(t, C.dorong, 0.03, 0.03) : [1, 1];
-  produk(ctx, 'keset_abu', KS5.x - geser, KS5.y, KS5.w, { sx: qx, sy: Math.abs(sY) * qy, bawah });
+  produk(ctx, 'keset_abu', KS5.x - geser, KS5.y, KS5.w, { sx: qx, sy: Math.abs(sY) * qy, bawah, cahaya: PAL.avocadoL, tinggi: 18 + 60 * Math.sin(Math.PI * Math.min(fase, 1)) });
   if (bawah && Math.abs(sY) > 0.2) labelIlustrasi(ctx, 120, 1480 - 210);
   if (t > 12.0) {
     const tx = kf(t, [[12.0, 1400], [C.dorong - 4 / FPS, 1015, eo], [C.dorong - 0.01, 1045, eio], [C.dorong, 975, E_in], [C.pental - 2 / FPS, 975],
@@ -360,38 +251,19 @@ function sceneBukti(ctx, t) {
   ctx.save(); cam(ctx, 1 + 0.03 * ss(seg(t, 14.0, 16.5)), 540, 900);
   ctx.fillStyle = PAL.paper; ctx.fillRect(-300, -300, W + 600, H + 600);
   for (let i = 0; i < 9; i++) ink(ctx, [[-200, 300 + i * 170], [W + 200, 290 + i * 170]], 3, { color: PAL.paperD, seed: 600 + i, taper: false });
-  produk(ctx, 'keset', KS6.x, KS6.y, KS6.w, { rot: 0.05 });
+  produk(ctx, 'keset', KS6.x, KS6.y, KS6.w, { rot: 0.05, cahaya: PAL.paper });
   shape(ctx, rrect(KARTU6.x - KARTU6.w / 2, KARTU6.y - KARTU6.h / 2, KARTU6.w, KARTU6.h, 18), { fill: PAL.white, line: 4.4, seed: 610, grain: 0.12, off: [6, 6] });
   if (t >= C.cap) {
     const [qx, qy] = squash(t, C.cap, 0.08, 0.08);
-    ctx.save(); ctx.translate(KARTU6.x, KARTU6.y); ctx.rotate(-0.05); ctx.scale(qx, qy);
-    ink(ctx, rrect(-300, -118, 600, 236, 16), 6, { closed: true, color: PAL.coralD, seed: 620, breaks: 0.15 });
-    text(ctx, '10RB+', 0, 22, { font: "800 150px 'Barlow Condensed'", fill: PAL.coralD, align: 'center' });
-    text(ctx, 'terjual / bulan', 0, 92, { font: '600 52px Jost', fill: PAL.coralD, align: 'center' });
-    ctx.restore();
+    cetakCap(ctx, KARTU6.x, KARTU6.y, 600, 236, [['10RB+', "800 150px 'Barlow Condensed'", 22], ['terjual / bulan', '600 52px Jost', 92]], { sx: qx, sy: qy });
   }
   // segel rating di "lebih."
-  const sk = pop(t, C.segel, 0.3);
-  if (sk > 0) {
-    ctx.save(); ctx.translate(840, 860); ctx.scale(sk, sk); ctx.rotate(0.08);
-    star(ctx, 0, 0, 170, { n: 18, inner: 0.86, fill: PAL.white, off: [0, 0] });
-    shape(ctx, ellipse(0, 0, 136, 136, 48), { fill: PAL.tealD, line: 5, seed: 630, grain: 0.3 });
-    star(ctx, -58, -32, 26, { n: 5, inner: 0.45, fill: PAL.mustard, off: [0, 0] });
-    text(ctx, '4,89', 22, -10, { font: '64px Slab', fill: PAL.white, align: 'center' });
-    text(ctx, '9,5rb+', 0, 56, { font: '600 40px Jost', fill: PAL.white, align: 'center' });
-    text(ctx, 'ulasan', 0, 98, { font: '600 34px Jost', fill: PAL.white, align: 'center' });
-    ctx.restore();
-  }
+  segelRating(ctx, 840, 860, pop(t, C.segel, 0.3), '4,89', '9,5rb+');
   // tangan + cap karet (antisipasi naik, hentak, tekan, angkat)
   const yb = stempelY(t);
   if (t > 14.2 && t < 15.4) {
     const [sx, sy] = t >= C.cap ? squash(t, C.cap, 0.15, 0.2) : (t > C.cap - 2 / FPS ? [0.9, 1.15] : [1, 1]);
-    ctx.save(); ctx.translate(KARTU6.x, yb); ctx.scale(sx, sy);
-    shape(ctx, rrect(-260, -24, 520, 24, 6), { fill: PAL.coral, line: 3.6, seed: 640, grain: 0.2 });
-    shape(ctx, rrect(-250, -112, 500, 92, 14), { fill: PAL.kraftD, line: 4.6, seed: 641, grain: 0.35, shade: [{ pts: rect(150, -120, 120, 110), color: PAL.brown, alpha: 0.5 }] });
-    shape(ctx, rrect(-34, -236, 68, 130, 12), { fill: PAL.brownL, line: 4, seed: 642, grain: 0.3 });
-    shape(ctx, ellipse(0, -270, 62, 52, 36), { fill: PAL.kraft, line: 4.4, seed: 643, grain: 0.3 });
-    ctx.restore();
+    capKaret(ctx, KARTU6.x, yb, sx, sy);
     tanganDi(ctx, [KARTU6.x + 34, yb - 290], Math.PI * 0.62, 'grip', 2.4, [KARTU6.x + 420, yb - 900], -1);
   }
   ctx.restore();
@@ -403,9 +275,9 @@ function sceneCta(ctx, t) {
   ctx.fillStyle = PAL.paper; ctx.fillRect(-300, -300, W + 600, H + 600);
   ctx.save(); cam(ctx, 1 + 0.02 * ss(seg(t, 16.5, 18.72)), 540, 960);
   rays(ctx, 540, 900, 30, 1500, PAL.mustardL, { alpha: 0.55 });
-  MOTIF7.forEach(([n, x, y, w, r], i) => { const k = pop(t, C.motif_pop + i * 4 / FPS, 0.3); if (k > 0) produk(ctx, n, x, y, w * k, { rot: r }); });
+  MOTIF7.forEach(([n, x, y, w, r], i) => { const k = pop(t, C.motif_pop + i * 4 / FPS, 0.3); if (k > 0) produk(ctx, n, x, y, w * k, { rot: r, asli: true }); });
   const nk = 1 + 0.05 * Math.sin(Math.PI * seg(t, C.motif_pop, C.motif_pop + 0.3));
-  produk(ctx, 'keset', 480, 880, 830 * nk, { rot: -0.06 });
+  produk(ctx, 'keset', 480, 880, 830 * nk, { rot: -0.06, asli: true });   // end card: warna asli
   const ck = pop(t, C.cek, 0.3), lp = 1 + 0.07 * Math.sin(Math.PI * seg(t, C.link, C.link + 0.3));
   if (ck > 0) pelat(ctx, 'Cek motif di link', W / 2, 360, '86px Slab', { k: ck * lp, rot: -0.02, seed: 700, fill: PAL.mustard });
   // tangan menunjuk ke bawah (ke tempat link) lewat busur, tiba di "link"
@@ -416,19 +288,7 @@ function sceneCta(ctx, t) {
   ctx.restore();
 }
 
-// ------------------------------------------------------------ transisi + potong
-function irisMasuk(ctx, cx, cy, p, gambarBerikut) {
-  const r = 2300 * p;
-  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.clip(); gambarBerikut(); ctx.restore();
-  if (r > 0 && r < 2300) ink(ctx, ellipse(cx, cy, r, r, 80), 6, { closed: true, seed: 990 });
-}
-function wipe(ctx, p, dari, gambarBerikut) {
-  ctx.save(); ctx.beginPath();
-  if (dari === 'bawah') ctx.rect(0, H * (1 - p), W, H * p); else if (dari === 'atas') ctx.rect(0, 0, W, H * p); else ctx.rect(0, 0, W * p, H);
-  ctx.clip(); gambarBerikut(); ctx.restore();
-  const tepi = dari === 'bawah' ? [[0, H * (1 - p)], [W, H * (1 - p)]] : dari === 'atas' ? [[0, H * p], [W, H * p]] : [[W * p, 0], [W * p, H]];
-  if (p > 0 && p < 1) ink(ctx, tepi, 6, { seed: 991, taper: false });
-}
+// ------------------------------------------------------------ urutan scene + transisi
 function renderSemua(ctx, t) {
   setClock(t);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -443,14 +303,4 @@ function renderSemua(ctx, t) {
   disclosure(ctx);
   paperFinish(ctx, W, H, 1);
 }
-export function renderFilm(ctx, t) {
-  if (t >= LOOP_END) { renderSemua(ctx, 0); return; }
-  renderSemua(ctx, t);
-  if (t >= LOOP_AT) {                                   // end card membuka iris ke frame pembuka, jadi loop menyambung
-    const p = eio(seg(t, LOOP_AT, LOOP_END));
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.arc(540, 960, 2300 * p, 0, TAU); ctx.clip();
-    renderSemua(ctx, 0); ctx.restore();
-    setClock(t);
-    if (p > 0 && p < 1) ink(ctx, ellipse(540, 960, 2300 * p, 2300 * p, 80), 6, { closed: true, seed: 992 });
-  }
-}
+export const renderFilm = denganLoop(renderSemua, LOOP_AT, LOOP_END, setClock);

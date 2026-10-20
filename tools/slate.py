@@ -200,6 +200,9 @@ def _bahan_film(folder, a):
     else:
         film = (AKAR / "templates" / a.template / "film.js").read_text(encoding="utf-8")
         tambahan = {f: (folder / f).read_text(encoding="utf-8") for f in ("isi.json", "foto.json")}
+    if a.film:                                           # kit affiliate aff_studio dikirim sebagai engine/<nama>
+        for f in sorted((AKAR / "kits" / "affiliate").glob("*.js")):
+            tambahan["engine/" + f.name] = f.read_text(encoding="utf-8")
     if (folder / "aset").is_dir():
         for f in sorted((folder / "aset").iterdir()):
             if f.suffix in (".js", ".json", ".css", ".svg", ".txt"):

@@ -100,17 +100,16 @@ Format ini menjadi patokan input frontend (§3).
 1. [x] **[Claude]** **Loader + validator paket data:** `tools/paket.py` (folder atau zip, produk ditolak/peringatan, `kategori_diatur`, angka di `video_angle` yang tidak ada di `key_features`, umur harga). Paket 2026-10-19: 9/9 siap. Tes dengan fixture yang disamarkan (`tests/fixture.py`).
 2. [x] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret`, `compliance.kategori_diatur`, `disclosure.teks` (dikunci), `foto.embed_total_maks_kb`. Zona aman Shopee Video masih angka sementara (480 px) sampai diukur.
 3. [ ] **[Claude]** **Generator naskah:** satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
-3b. [~] **[Claude]** **Pipeline kreator per video (ADR-P06).**
-   - Sudah ada di repo:
-     - `tools/cutout.py`,
-     - `tools/audit_film.py` (salinan Baru Tau + `kata_koreksi.json`),
-     - `tools/slate_score.py`,
-     - `tools/pratinjau.py` dan `tools/slate.py` dengan `--film`/`--kit`/aset/partitur,
-     - contoh lengkap `examples/aff001-keset`.
-   - **Belum:**
-     - `CLAUDE.md` aff_studio untuk sesi kreator headless (alur langkah demi langkah seperti Mode PRODUKSI Baru Tau),
-     - kit kecil `kits/affiliate/aff.js` (sekarang disclosure, caption, cutout, dan cap masih di dalam `film.js` contoh),
-     - alat pengukur jendela sunyi `vo.mp3` → `kata_koreksi.json` (sekarang skrip ad-hoc di sesi).
+3b. [x] **[Claude]** **Pipeline kreator per video (ADR-P06)** dibakukan:
+   - `CLAUDE.md` (Mode PRODUKSI 0–12),
+   - `run_produksi.sh`: model/effort dikunci; `.claude/kreator.json` tidak membaca `.env` dan tidak mengubah repo; tanpa web search; transkrip dicek `tools/cek_sesi.py`,
+   - `tools/produksi.py` (satu pintu),
+   - `tools/sunyi.py` (onset kata dari jendela sunyi terukur),
+   - kit `kits/affiliate/aff.js` (dikirim sebagai `engine/aff.js`; keset dipindah ke kit, identik piksel),
+   - kerangka `templates/produksi/`.
+
+   Uji flag headless + penolakan baca `.env` lolos. **Belum diuji:** satu run headless penuh (menunggu persetujuan pemilik: memakai kuota Claude dan ElevenLabs).
+3b2. [x] **[Claude]** **Blend produk asli + animasi** (pertanyaan pemilik): bayangan lembut dua lapis, pencahayaan ulang, tint ambien ≤ 0,15 (kunci `visual.produk_tint_maks`), warna asli di end card. Keset v2 dirender ulang dan QA lolos.
 3c. [x] **[Claude]** **Cutout produk otomatis:** `tools/cutout.py` (rembg `isnet-general-use` di `.venv`, ±10 detik per foto di server ARM).
    - Pulau sisa ikon/teks dibuang, hasilnya dikemas sebagai WebP beralpha di `aset/foto.js`.
    - Keset: 5 cutout bersih, termasuk 3 motif dari foto grid.

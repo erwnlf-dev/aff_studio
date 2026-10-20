@@ -9,8 +9,8 @@ Berkas kerja lengkap ada di server: `/data/apps/affiliate-data/2026-10-19/produk
 | `naskah.json` | Naskah per beat dengan sumber klaim (divalidasi `tools/siapkan_film.py`) |
 | `kata_koreksi.json` | Onset kata yang dikoreksi ke jendela sunyi terukur di `vo.mp3` |
 | `brief.md` | Blok arahan 8 baris berangka, tiga momen andalan, storyboard |
-| `film.js` | Film (kit `midcentury`), memakai `aset/foto.js` dari `tools/cutout.py` |
+| `film.js` | Film v2: kit `midcentury` + kit affiliate `engine/aff.js` (cutout dengan blend), `aset/foto.js` dari `tools/cutout.py` |
 | `score.py` | Partitur `slate_score` dan aturan mix |
-| `ledger.md` | Critic loop 4 putaran + perbandingan BASELINE + 3 render |
+| `ledger.md` | Critic loop 4 putaran + perbandingan BASELINE + 3 render + versi 2 (kit, blend) |
 | `cek_akhir.md` | QA final, baca tanpa suara, peringatan tersisa |
 | `teks_post.txt` | Caption unggahan |
