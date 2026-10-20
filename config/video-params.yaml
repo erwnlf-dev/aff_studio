@@ -1,0 +1,871 @@
+# Registry parameter video affiliate
+#
+# Semua angka spesifikasi video tinggal di sini, bukan di kode. Penjelasan lengkap, metrik, dan aturan
+# eksperimen ada di docs/12-optimization-and-experiments.md (selanjutnya "doc 12").
+#
+# Bentuk satu parameter:
+#   <nama.bertitik>:
+#     status:     default | eksperimen | usulan
+#                   default    = dipakai di MVP apa adanya                        → [Default] di doc 12
+#                   eksperimen = MVP memakai `nilai` sebagai kontrol; lengan lain diuji A/B  → [Eksperimen]
+#                   usulan     = belum dipakai sampai pemilik menyetujui            → [Usulan]
+#     nilai:      nilai MVP (untuk usulan: nilai yang diusulkan)
+#     rentang:    [min, max] untuk angka; atau
+#     pilihan:    daftar nilai yang sah (untuk daftar: setiap elemen harus ada di pilihan)
+#     satuan:     opsional
+#     kunci:      opsional; compliance | qa. Parameter berkunci tidak boleh disentuh eksperimen atau bandit,
+#                 dan mengubah nilainya butuh ADR (doc 12 §2.3).
+#     alasan:     kenapa angka ini
+#     sumber:     id dari bagian `sumber` atau `hipotesis` di bawah
+#     eksperimen: opsional; id di bagian `eksperimen`
+#
+# Cek konsistensi: python3 tools/cek_params.py
+# Snapshot + variant_id: python3 tools/cek_params.py snapshot [--set nama=nilai ...] [--eksperimen EXP-xx --lengan B]
+
+versi_skema: 1
+
+sumber:
+  BT-BIBLE: "baru-tau-autopilot series/BIBLE.md — tempo narasi, caption, gerak dalam angka, TERLARANG"
+  BT-BASELINE: "baru-tau-autopilot series/BASELINE.md — batas bawah kualitas yang terukur (frame 0, caption ≥ 64 px, diam ≤ 0,5 s, kontras 4,5:1)"
+  BT-VIRAL: "baru-tau-autopilot series/VIRAL.md — hook, ritme visual 2–4 s, jam posting (data Buffer 2,5 juta post), kuota"
+  BT-AUDIT: "baru-tau-autopilot docs/AUDIT-2026-10-19.md dan docs/audit/audio.md — temuan terukur #001"
+  BT-SLATE: "slate-studio slate_sound.py, app.py, qa.py — ducking 7 dB, musik -6/-12 dB, -14 LUFS, TP <= -1,5 dBTP, jeda 0,38/0,7 s, stability 0,5"
+  R-TIKTOK-ORI: "Ringkasan pihak ketiga aturan 'unoriginal content' TikTok (bigseller.pro, openclip.app, 2025–2026). Tidak resmi; wajib dicek ke Community Guidelines"
+  R-TIKTOK-SHOP: "TikTok Shop Content Policy 22 Mei 2026 dan Branded Content Policy 31 Agustus 2026 (disebut di ppc.land/canopymanagement.com; teks resmi belum dibaca)"
+  R-SHOPEE-AFF: "shopee.co.id/inspirasi-shopee/shopee-affiliates-program — akun pribadi, konten orisinal, produk terlarang"
+  R-SHORTS-BENCH: "Panduan pihak ketiga Shorts (subscribr.ai, contentstudio.io, socialmediaexaminer.com): tidak ada ambang resmi; bandingkan dengan video sendiri"
+  R-ELEVEN: "ElevenLabs docs 'Prompting Eleven v3': stability = preset Creative/Natural/Robust; v2 punya stability/similarity/style/speed kontinu"
+  TEKNIS: "Alasan teknis render/encode (dijelaskan di doc 12 §5)"
+
+hipotesis:
+  H01: "Video produk lebih pendek dari explainer: unit informasinya lebih sedikit (produk, 2–3 manfaat, bukti, CTA), jadi 18–25 s memberi completion lebih tinggi tanpa memotong CTA."
+  H02: "Produk terlihat di frame 0 menaikkan klik dari penonton yang bertahan, tapi bisa menaikkan swipe karena terbaca sebagai iklan."
+  H03: "Hook pertanyaan (pola terkuat Baru Tau) sama baiknya atau lebih baik daripada pain/klaim angka untuk produk murah, dan paling aman secara compliance."
+  H04: "Tempo jualan sedikit lebih cepat dari explainer (2,6 vs 2,4–2,6 kata/s) tanpa terdengar terburu-buru, asalkan CTA tetap paling lambat."
+  H05: "Caption per frasa dengan 1 kata kunci disorot lebih terbaca di HP daripada word-by-word, yang menarik mata dari produk."
+  H06: "Harga sebagai angka bertanggal menaikkan CTR untuk produk < Rp100rb dan tidak berpengaruh/menurunkan untuk produk mahal."
+  H07: "Musik pelan di bawah VO menaikkan avg watch % dibanding tanpa musik; volume di atas -6 dB relatif menurunkan pemahaman."
+  H08: "Untuk belanja, jam malam (19–21 WIB) mengalahkan pagi di TikTok/Reels; Threads tetap pagi (data Baru Tau/Buffer)."
+  H09: "Dua varian per produk cukup untuk belajar; varian ketiga lebih sering menurunkan jangkauan akun (dibaca sebagai duplikat) daripada menambah informasi."
+  H10: "Foto persegi di kartu di atas latar warna lebih terbaca daripada crop penuh 9:16, yang memotong produk."
+  H11: "Ken Burns pelan di 30 fps tidak terlihat patah-patah; di 24 fps pan lambat terlihat 'judder'."
+  H12: "Label disclosure kecil yang persisten tidak menaikkan swipe secara terukur dibanding label di akhir saja."
+
+# Definisi lengkap dan sumber datanya: doc 12 §4.2
+metrik:
+  views_72j: "views 72 jam setelah tayang (distribusi)"
+  hold_3s: "fraksi penonton yang masih menonton di detik 3 (Shorts: 'viewed' vs 'swiped away'; TikTok: kurva retensi)"
+  avg_watch_pct: "rata-rata persen durasi yang ditonton"
+  completion: "fraksi penonton yang menonton sampai habis"
+  ctr_link: "klik link affiliate (sub_id video) per 1.000 views"
+  cvr_order: "order per klik"
+  komisi_per_1000_views: "komisi (tertunda + tervalidasi) per 1.000 views"
+  komisi_bersih_per_video: "komisi tervalidasi − biaya langsung video (TTS, LLM, compute)"
+  laporan_negatif: "not interested / laporan / komentar negatif per 1.000 views"
+  keluhan_harga: "komentar atau pesan yang menyebut harga di video tidak sama dengan di toko"
+  cancel_retur: "fraksi order yang batal/retur"
+
+parameter:
+
+  # ---------------------------------------------------------------- durasi dan beat
+  durasi.target_detik:
+    status: eksperimen
+    nilai: 22
+    rentang: [12, 45]
+    satuan: detik
+    alasan: "Baru Tau 35–45 s cocok untuk explainer 7 bagian; video produk punya lebih sedikit unit informasi. 22 s = 8 beat × ~2,75 s, masih di ritme 2–4 s per visual."
+    sumber: [BT-BIBLE, BT-VIRAL, H01]
+    eksperimen: EXP-01
+  durasi.ekor_loop_detik:
+    status: default
+    nilai: 0.3
+    rentang: [0.0, 0.6]
+    satuan: detik
+    alasan: "Film = durasi VO + ekor supaya frame akhir sempat menyambung ke frame 0 (Baru Tau META.dur = VO + 0,3; audit menemukan ekor terpotong saat durasi = VO)."
+    sumber: [BT-AUDIT, BT-BASELINE]
+  beat.durasi_min_detik:
+    status: default
+    nilai: 1.5
+    rentang: [1.0, 3.0]
+    satuan: detik
+    alasan: "Di bawah 1,5 s satu foto produk belum terbaca (0,3 s per kata teks kunci + waktu mengenali benda)."
+    sumber: [BT-BIBLE]
+  beat.durasi_maks_detik:
+    status: default
+    nilai: 4.0
+    rentang: [3.0, 6.0]
+    satuan: detik
+    alasan: "Pergantian visual setiap 2–4 s (Baru Tau VIRAL). Ken Burns di satu foto lebih dari 4 s terasa diam walau bergerak."
+    sumber: [BT-VIRAL]
+  beat.hook_maks_detik:
+    status: default
+    nilai: 3.0
+    rentang: [1.5, 6.0]
+    satuan: detik
+    alasan: "Baru Tau: hook selesai ≤ 15% durasi. 15% dari 22 s = 3,3 s."
+    sumber: [BT-BASELINE]
+  template.default:
+    status: eksperimen
+    nilai: masalah_solusi
+    pilihan: [masalah_solusi, fitur_cepat, price_reveal]
+    alasan: "Satu template di MVP supaya hasil awal bisa dibandingkan. Pilih otomatis per kategori adalah usulan (template.pilih_per_kategori); perbandingan menunggu ADR-P03."
+    sumber: [H03]
+    eksperimen: EXP-03
+  template.pilih_per_kategori:
+    status: usulan
+    nilai: false
+    pilihan: [true, false]
+    alasan: "Baru aktif setelah EXP-03 punya pemenang per kategori; sebelum itu pemetaan kategori→template hanya tebakan."
+    sumber: [H01]
+  template.masalah_solusi.urutan:
+    status: default
+    nilai: [hook, masalah, produk, fitur, fitur, bukti, harga, cta]
+    pilihan: [hook, masalah, produk, fitur, bukti, harga, cta]
+    alasan: "Struktur Baru Tau (hook → dunia dikenal → kejanggalan → temuan → ajakan) dipetakan ke jualan: masalah yang dikenal → produk sebagai jawaban → bukti dari feed. Beat harga dibuang otomatis kalau harga.mode = tanpa_angka."
+    sumber: [BT-BIBLE]
+    eksperimen: EXP-03
+  template.fitur_cepat.urutan:
+    status: eksperimen
+    nilai: [hook, produk, fitur, fitur, fitur, bukti, harga, cta]
+    pilihan: [hook, masalah, produk, fitur, bukti, harga, cta]
+    alasan: "Untuk produk yang manfaatnya terlihat dari foto (gadget kecil, alat dapur). Lengan B di EXP-03."
+    sumber: [H01]
+    eksperimen: EXP-03
+  template.price_reveal.urutan:
+    status: eksperimen
+    nilai: [hook, produk, fitur, fitur, bukti, harga, cta]
+    pilihan: [hook, masalah, produk, fitur, bukti, harga, cta]
+    alasan: "Hook 'tebak harganya' lalu harga dibuka di akhir. Hanya sah kalau harga.mode = angka_bertanggal; kalau tidak, template ini tidak boleh dipilih."
+    sumber: [H06]
+    eksperimen: EXP-03
+  template.perbandingan.urutan:
+    status: usulan
+    nilai: [hook, produk, produk, fitur, bukti, cta]
+    pilihan: [hook, masalah, produk, fitur, bukti, harga, cta]
+    alasan: "2 produk dari kategori yang sama, angka hanya dari feed. Butuh dukungan multi-produk di kontrak feed dan link (lihat ADR-P03)."
+    sumber: [H01]
+
+  # ---------------------------------------------------------------- voiceover (ElevenLabs)
+  vo.tempo_kata_per_detik:
+    status: eksperimen
+    nilai: 2.6
+    rentang: [2.2, 3.0]
+    satuan: kata terucap per detik (rata-rata, setelah jeda)
+    alasan: "Baru Tau 145–155 kpm efektif = 2,4–2,6 kata/s. Jualan boleh di ujung atas. Di atas 3,0 penonton HP mulai kehilangan kata (audit: CTA 261 kpm terdengar terburu-buru)."
+    sumber: [BT-BIBLE, BT-AUDIT, H04]
+    eksperimen: EXP-06
+  vo.tempo_maks_kalimat_kps:
+    status: default
+    kunci: qa
+    nilai: 3.15
+    rentang: [2.8, 3.3]
+    satuan: kata per detik, per kalimat
+    alasan: "Batas Baru Tau 190 kpm per kalimat (3,17 kata/s). Kalimat yang lewat ditulis ulang, bukan dipercepat."
+    sumber: [BT-BIBLE]
+  vo.kata_target:
+    status: default
+    nilai: 48
+    rentang: [30, 90]
+    satuan: kata terucap (angka ditulis dengan huruf)
+    alasan: "≈ (durasi − ekor − total jeda) × tempo = (22 − 0,3 − 2,8) × 2,6 ≈ 49. Dihitung ulang kalau durasi atau tempo berubah (doc 12 §3.2)."
+    sumber: [BT-BIBLE]
+  vo.kata_maks_per_kalimat:
+    status: default
+    nilai: 12
+    rentang: [8, 14]
+    alasan: "Baru Tau ≤ 14. Lebih pendek untuk jualan karena satu kalimat = satu caption ≤ 5 kata ×2–3 layar."
+    sumber: [BT-BIBLE, BT-AUDIT]
+  vo.model:
+    status: default
+    nilai: eleven_v3
+    pilihan: [eleven_v3, eleven_multilingual_v2]
+    alasan: "Model yang sudah dipakai Slate Studio. v3 lebih ekspresif dan mendukung audio tag; v2 punya kontrol speed."
+    sumber: [BT-SLATE, R-ELEVEN]
+  vo.voice_id:
+    status: eksperimen
+    nilai: kandidat_a
+    pilihan: [kandidat_a, kandidat_b, kandidat_c]
+    alasan: "Audit Baru Tau: kesan 'AI' ada di ritme dan energi; suara native Indonesia layak diuji A/B. Tiga kandidat dari Voice Library (filter Indonesian) diisi pemilik; ID asli di .env/registry suara, bukan di sini."
+    sumber: [BT-AUDIT]
+    eksperimen: EXP-04
+  vo.stability:
+    status: default
+    nilai: 0.5
+    pilihan: [0.0, 0.5, 1.0]
+    alasan: "Untuk v3 stability adalah preset (Creative/Natural/Robust); Slate mengirim 0,5 (Natural). Creative rawan halusinasi pengucapan angka dan nama produk."
+    sumber: [BT-SLATE, R-ELEVEN]
+  vo.v2.similarity_boost:
+    status: default
+    nilai: 0.75
+    rentang: [0.5, 0.9]
+    alasan: "Nilai Slate untuk v2. Hanya dipakai kalau vo.model = eleven_multilingual_v2."
+    sumber: [BT-SLATE]
+  vo.v2.style:
+    status: default
+    nilai: 0.1
+    rentang: [0.0, 0.4]
+    alasan: "Nilai Slate untuk v2. Di atas 0,4 suara mulai tidak stabil antar-take."
+    sumber: [BT-SLATE, R-ELEVEN]
+  vo.v2.speed:
+    status: default
+    nilai: 1.0
+    rentang: [0.9, 1.15]
+    alasan: "API menerima 0,7–1,2; di luar 0,9–1,15 artefak terdengar. Tempo diatur lewat naskah, bukan speed."
+    sumber: [BT-SLATE]
+  vo.jeda_kalimat_detik:
+    status: default
+    nilai: 0.30
+    rentang: [0.20, 0.50]
+    satuan: detik
+    alasan: "Baru Tau memakai 0,38 untuk explainer. Jualan sedikit lebih rapat. Jeda seragam 0,12–0,25 s adalah tanda suara AI (analisis #001), jadi jangan di bawah 0,20."
+    sumber: [BT-SLATE, BT-AUDIT, H04]
+  vo.jeda_bagian_detik:
+    status: default
+    nilai: 0.5
+    rentang: [0.3, 0.8]
+    satuan: detik
+    alasan: "Baru Tau 0,7 di pergantian bagian. Jualan punya 2 pergantian besar (masalah→produk, bukti→CTA)."
+    sumber: [BT-SLATE]
+  vo.jeda_sebelum_payoff_detik:
+    status: default
+    nilai: 0.45
+    rentang: [0.0, 0.8]
+    satuan: detik
+    alasan: "Satu jeda dramatis sebelum produk muncul (atau sebelum harga di price_reveal). Baru Tau: jeda 0,4–0,8 s sebelum jawaban; hening ≥ 0,4 s harus di dalam jeda VO."
+    sumber: [BT-BIBLE, BT-AUDIT]
+  vo.audio_tag_maks:
+    status: default
+    nilai: 1
+    rentang: [0, 2]
+    alasan: "Baru Tau ≤ 2 untuk 90 kata; naskah jualan separuhnya."
+    sumber: [BT-BIBLE]
+  vo.cta_paling_lambat:
+    status: default
+    nilai: true
+    pilihan: [true, false]
+    alasan: "Audit #001: CTA adalah kalimat tercepat (261 kpm). Aturan: CTA dibaca paling lambat."
+    sumber: [BT-AUDIT, BT-BIBLE]
+
+  # ---------------------------------------------------------------- hook
+  hook.tipe:
+    status: eksperimen
+    nilai: pertanyaan
+    pilihan: [pertanyaan, klaim_angka, pain, visual_shock, price_reveal]
+    alasan: "Pertanyaan = pola Baru Tau yang terbukti dan paling aman compliance. klaim_angka hanya angka feed (terjual, rating, diskon). pain dilarang untuk kategori yang klaim manfaatnya diatur (kesehatan, kosmetik, suplemen). price_reveal hanya kalau harga.mode = angka_bertanggal."
+    sumber: [BT-VIRAL, H03]
+    eksperimen: EXP-02
+  hook.durasi_detik:
+    status: default
+    nilai: 2.5
+    rentang: [1.5, 4.0]
+    satuan: detik
+    alasan: "Kata kunci hook terucap sebelum 1,5 s, lalu satu beat kecil untuk mendaratkan. Batas atas mengikuti beat.hook_maks_detik."
+    sumber: [BT-BASELINE]
+  hook.produk_di_frame0:
+    status: eksperimen
+    nilai: true
+    pilihan: [true, false]
+    alasan: "Baru Tau: frame 0 = thumbnail utuh dengan subjek terlihat. Untuk jualan subjek = produk, tapi produk di frame 0 bisa terbaca sebagai iklan. Lengan B: masalah/konteks di frame 0, produk masuk ≤ 1,5 s."
+    sumber: [BT-BASELINE, H02]
+    eksperimen: EXP-05
+  hook.teks_layar_kata_maks:
+    status: default
+    nilai: 5
+    rentang: [3, 7]
+    alasan: "Baru Tau: ≤ 5 kata, memuat nama benda atau kejanggalannya, terbaca 1 s tanpa suara. Juga dibaca pencarian TikTok/Shorts."
+    sumber: [BT-BASELINE, BT-VIRAL]
+  hook.kata_kunci_sebelum_detik:
+    status: default
+    nilai: 1.5
+    rentang: [1.0, 2.5]
+    satuan: detik
+    alasan: "Baru Tau menargetkan < 2 s; #001 terlambat (2,88 s). Video jualan lebih cepat diswipe, jadi 1,5."
+    sumber: [BT-BIBLE, BT-AUDIT]
+  hook.aksi_pertama_dalam_detik:
+    status: default
+    kunci: qa
+    nilai: 0.5
+    rentang: [0.2, 0.5]
+    satuan: detik
+    alasan: "Baru Tau BASELINE 2: ada aksi pertama dalam 0,5 s. Frame 0 yang diam terbaca sebagai video macet."
+    sumber: [BT-BASELINE]
+  hook.kandidat_dibuat:
+    status: default
+    nilai: 3
+    rentang: [1, 8]
+    alasan: "Satu panggilan LLM menulis 3 hook; dipilih dengan aturan (≤ 5 kata, nama produk, tidak ada klaim di luar feed). Generator + penilai otomatis yang lebih besar ada di ide B2."
+    sumber: [TEKNIS]
+
+  # ---------------------------------------------------------------- teks di layar
+  caption.gaya:
+    status: eksperimen
+    nilai: per_frasa
+    pilihan: [per_frasa, kata_per_kata, kalimat, tanpa]
+    alasan: "Baru Tau: caption dipecah dari timing kata, ≤ 7 kata, 1–2 baris, kata kunci disorot. Word-by-word adalah gaya umum jualan; diuji (EXP-07)."
+    sumber: [BT-BASELINE, H05]
+    eksperimen: EXP-07
+  caption.kata_maks_per_layar:
+    status: default
+    nilai: 5
+    rentang: [1, 7]
+    alasan: "Baru Tau ≤ 7. Video jualan lebih cepat dan ada teks kunci (harga, bukti) yang bersaing, jadi 5."
+    sumber: [BT-BASELINE]
+  caption.font_px:
+    status: default
+    nilai: 68
+    rentang: [64, 96]
+    satuan: px (kanvas 1080×1920)
+    alasan: "Baru Tau ≥ 64 px (caption #001 42 px terlalu kecil di HP). Batas bawah tidak boleh turun."
+    sumber: [BT-BASELINE, BT-AUDIT]
+  caption.kata_disorot_per_layar:
+    status: default
+    nilai: 1
+    rentang: [0, 3]
+    alasan: "Baru Tau 1–3. Untuk jualan satu saja: kata manfaat atau angka feed."
+    sumber: [BT-BASELINE]
+  caption.warna_sorot:
+    status: default
+    nilai: "#FFD23F"
+    pilihan: ["#FFD23F", "#FF5A36", "#3DDC97"]
+    alasan: "Kuning hangat terbaca di atas foto terang dan gelap dengan kotak/outline; kontras tetap dicek per frame (teks.kontras_min)."
+    sumber: [BT-BASELINE]
+  teks.detik_baca_per_kata:
+    status: default
+    nilai: 0.3
+    rentang: [0.25, 0.4]
+    satuan: detik
+    alasan: "Standar tipografi Baru Tau. Teks kunci 3 kata tampil ≥ 0,9 s."
+    sumber: [BT-BIBLE]
+  teks.kunci_font_px:
+    status: default
+    nilai: 60
+    rentang: [56, 120]
+    satuan: px
+    alasan: "Baru Tau: teks kunci ≥ 56 px (cap-height ≥ 40). Harga dan bukti sosial adalah teks kunci."
+    sumber: [BT-BASELINE]
+  teks.kontras_min:
+    status: default
+    kunci: qa
+    nilai: 4.5
+    rentang: [4.5, 7.0]
+    alasan: "WCAG 4,5:1 di setiap frame (Baru Tau BASELINE 13, dicek QA Slate lewat META.kontras). Foto produk terang membuat caption tanpa kotak sering gagal."
+    sumber: [BT-BASELINE, BT-SLATE]
+  zona_aman.tiktok.bawah_px:
+    status: default
+    nilai: 480
+    rentang: [380, 560]
+    satuan: px dari bawah
+    alasan: "TikTok menaruh caption, nama akun, dan anchor produk di bawah. Angka perkiraan; wajib dicek dengan screenshot UI terbaru sebelum MVP dikunci."
+    sumber: [TEKNIS]
+  zona_aman.tiktok.kanan_px:
+    status: default
+    nilai: 140
+    rentang: [100, 180]
+    satuan: px dari kanan
+    alasan: "Kolom ikon like/comment/share. Perkiraan; cek screenshot."
+    sumber: [TEKNIS]
+  zona_aman.reels.bawah_px:
+    status: default
+    nilai: 420
+    rentang: [320, 520]
+    satuan: px dari bawah
+    alasan: "Perkiraan; cek screenshot. Satu file untuk semua platform berarti memakai zona terketat (lihat doc 12 §3.4)."
+    sumber: [TEKNIS]
+  zona_aman.threads.bawah_px:
+    status: default
+    nilai: 440
+    rentang: [300, 520]
+    satuan: px dari bawah
+    alasan: "Baru Tau: caption di atas y = 1480 → 440 px dari bawah."
+    sumber: [BT-BASELINE]
+  zona_aman.atas_px:
+    status: default
+    nilai: 160
+    rentang: [120, 260]
+    satuan: px dari atas
+    alasan: "Tab dan status bar di semua platform. Perkiraan; cek screenshot."
+    sumber: [TEKNIS]
+
+  # ---------------------------------------------------------------- gerak
+  motion.fps:
+    status: default
+    nilai: 30
+    pilihan: [24, 30]
+    alasan: "Baru Tau 24 fps cocok untuk animasi terbatas. Ken Burns adalah pan/zoom pelan yang kontinu; di 24 fps gerak lambat lebih mudah terlihat patah. Biaya +25% frame (doc 12 §5)."
+    sumber: [TEKNIS, H11]
+  motion.kenburns.zoom_per_detik:
+    status: default
+    nilai: 0.03
+    rentang: [0.01, 0.06]
+    satuan: fraksi skala per detik
+    alasan: "3%/s: terasa hidup tanpa membuat teks foto (label kemasan) bergeser keluar terbaca. Memastikan tidak ada 'diam > 0,5 s'."
+    sumber: [BT-BASELINE, TEKNIS]
+  motion.kenburns.zoom_maks:
+    status: default
+    nilai: 1.15
+    rentang: [1.05, 1.30]
+    alasan: "Zoom total per beat. Di atas 1,15 foto marketplace (sering 800–1000 px) mulai di-upscale dan terlihat lembek."
+    sumber: [TEKNIS]
+  motion.kenburns.pan_maks_frac:
+    status: default
+    nilai: 0.08
+    rentang: [0.0, 0.15]
+    satuan: fraksi lebar frame
+    alasan: "Pan kecil ke arah detail. Pan besar di foto statis terasa seperti slideshow murah."
+    sumber: [TEKNIS]
+  motion.kenburns.arah:
+    status: default
+    nilai: ke_saliensi
+    pilihan: [ke_saliensi, zoom_in_tengah, deterministik_dari_hash]
+    alasan: "Dorong ke bagian yang sedang disebut VO (fitur). Bukan acak: semua gerak harus fungsi deterministik dari waktu (aturan render Baru Tau)."
+    sumber: [BT-BASELINE]
+  motion.easing:
+    status: default
+    nilai: ease_in_out_sine
+    pilihan: [ease_in_out_sine, ease_out_cubic, pegas_055]
+    alasan: "Linear dilarang untuk gerak yang terlihat (TERLARANG 6 Baru Tau). Sine untuk Ken Burns; pegas redaman 0,55 untuk teks/kartu yang masuk."
+    sumber: [BT-BIBLE]
+  motion.transisi:
+    status: default
+    nilai: potong_keras
+    pilihan: [potong_keras, push_konten]
+    alasan: "Baru Tau: bawaan potong keras; zoom blur, whip pan, light leak, dissolve panjang termasuk TERLARANG."
+    sumber: [BT-BIBLE]
+  motion.transisi_frame:
+    status: default
+    nilai: 0
+    rentang: [0, 8]
+    satuan: frame
+    alasan: "0 untuk potong keras; push_konten 6–8 frame."
+    sumber: [BT-BIBLE]
+  motion.ganti_visual_maks_detik:
+    status: default
+    nilai: 3.0
+    rentang: [2.0, 4.0]
+    satuan: detik
+    alasan: "Baru Tau VIRAL: pergantian visual tiap 2–4 s. Beat yang lebih panjang diisi crop kedua (detail) atau teks kunci yang masuk."
+    sumber: [BT-VIRAL]
+  motion.diam_maks_detik:
+    status: default
+    kunci: qa
+    nilai: 0.5
+    rentang: [0.3, 0.5]
+    satuan: detik
+    alasan: "Baru Tau BASELINE 7 dan QA Slate: tidak ada segmen diam > 0,5 s."
+    sumber: [BT-BASELINE, BT-SLATE]
+  motion.punch_in_kata_kunci:
+    status: default
+    nilai: 1.06
+    rentang: [1.0, 1.12]
+    satuan: skala
+    alasan: "Dorongan 6% dalam 4 frame saat kata yang disorot terucap. Gerak hero kecil; 1,0 = mati."
+    sumber: [BT-BIBLE]
+
+  # ---------------------------------------------------------------- audio dan musik
+  musik.ada:
+    status: eksperimen
+    nilai: true
+    pilihan: [true, false]
+    alasan: "Musik pelan memberi energi; tanpa musik membuat VO lebih jelas. Diuji di EXP-08."
+    sumber: [H07]
+    eksperimen: EXP-08
+  musik.sumber:
+    status: default
+    kunci: compliance
+    nilai: sintesis
+    pilihan: [sintesis, pustaka_bebas_royalti]
+    alasan: "Lagu berlisensi/tren tidak boleh dibakar ke file: akun bisnis TikTok terbatas pada Commercial Music Library, dan lagu bisa dibisukan. Baru Tau mensintesis musik (aman hak cipta, deterministik)."
+    sumber: [BT-SLATE]
+  musik.bpm:
+    status: default
+    nilai: 112
+    rentang: [90, 128]
+    alasan: "Cukup cepat untuk video 20-an detik tanpa bersaing dengan tempo bicara 2,6 kata/s."
+    sumber: [TEKNIS]
+  musik.level_relatif_db:
+    status: default
+    nilai: -12
+    rentang: [-18, -6]
+    satuan: dB relatif ke VO saat jeda
+    alasan: "Preset 'pelan' Slate (-12). Video jualan bergantung pada kata yang dipahami (nama, manfaat, CTA)."
+    sumber: [BT-SLATE, H07]
+  musik.duck_db:
+    status: default
+    nilai: 7
+    rentang: [4, 10]
+    satuan: dB
+    alasan: "Ducking dinamis Slate 7 dB; audit #001 menemukan ducking statis 0,8 dB membuat mix seperti dinding."
+    sumber: [BT-SLATE, BT-AUDIT]
+  audio.lufs_target:
+    status: default
+    kunci: qa
+    nilai: -14
+    rentang: [-16, -13]
+    satuan: LUFS
+    alasan: "Target QA Slate (±1,5). Platform menormalisasi sekitar -14."
+    sumber: [BT-SLATE]
+  audio.true_peak_maks_dbtp:
+    status: default
+    kunci: qa
+    nilai: -1.5
+    rentang: [-2.0, -1.0]
+    alasan: "Limiter Slate menjaga TP ≤ -1,5 dBTP; encoder AAC menambah ~0,5 dB."
+    sumber: [BT-SLATE]
+  foley.ada:
+    status: default
+    nilai: true
+    pilihan: [true, false]
+    alasan: "Klik/pop di aksi yang terlihat (harga mendarat, centang bukti). Energi > 150 Hz, 3–6 dB di atas musik; 1/3 foley #001 tak terdengar di HP."
+    sumber: [BT-BIBLE, BT-AUDIT]
+
+  # ---------------------------------------------------------------- elemen affiliate
+  harga.mode:
+    status: eksperimen
+    nilai: tanpa_angka
+    pilihan: [tanpa_angka, angka_bertanggal]
+    alasan: "Video hidup berbulan-bulan, harga marketplace berubah per jam (flash sale, voucher). Angka yang benar saat render bisa jadi klaim salah saat ditonton. Kontrol = tanpa angka ('cek harga terbaru di keranjang'); lengan B = angka dari feed + tanggal kecil, hanya di layar."
+    sumber: [H06]
+    eksperimen: EXP-09
+  harga.diucapkan:
+    status: default
+    kunci: compliance
+    nilai: false
+    pilihan: [false]
+    alasan: "Angka yang diucapkan tidak bisa diberi tanggal dan tidak bisa dihapus dari audio. Mengubahnya butuh ADR."
+    sumber: [H06]
+  harga.umur_data_maks_jam:
+    status: default
+    kunci: compliance
+    nilai: 24
+    rentang: [1, 24]
+    satuan: jam antara harga diambil feed dan video tayang
+    alasan: "Kalau harga lebih tua dari ini, beat harga dibuang otomatis (fallback tanpa_angka). Butuh field price_captured_at di feed (ADR-P01)."
+    sumber: [H06]
+  harga.posisi_frac:
+    status: default
+    nilai: 0.72
+    rentang: [0.5, 0.85]
+    satuan: fraksi durasi
+    alasan: "Harga setelah nilai dibangun (fitur + bukti), sebelum CTA. Baru Tau: momen paling layak tonton ulang < 75% durasi."
+    sumber: [BT-BASELINE]
+  bukti.format:
+    status: default
+    kunci: compliance
+    nilai: terjual_dan_rating
+    pilihan: [terjual, rating, terjual_dan_rating, tanpa]
+    alasan: "Hanya angka yang ada di feed, ditulis persis seperti tampilan marketplace ('10rb+ terjual', '4,8'). Kutipan ulasan tidak ada di pilihan sampai feed membawanya (ADR-P01)."
+    sumber: [R-SHOPEE-AFF]
+  bukti.rating_min_tampil:
+    status: default
+    nilai: 4.6
+    rentang: [4.0, 5.0]
+    alasan: "Rating di bawah ini tidak disebut (bukan karena salah, tapi bukti lemah). Produk tetap boleh dibuat videonya."
+    sumber: [TEKNIS]
+  bukti.jumlah_rating_min_tampil:
+    status: default
+    nilai: 50
+    rentang: [10, 1000]
+    alasan: "Rating dari sedikit ulasan mudah turun setelah video tayang (berbeda dengan 'terjual' yang hanya naik). Di bawah ini rating tidak disebut."
+    sumber: [TEKNIS]
+  bukti.terjual_min_tampil:
+    status: default
+    nilai: 100
+    rentang: [0, 10000]
+    alasan: "Angka 'terjual' kecil malah melemahkan; di bawah ini bukti pakai rating saja atau dibuang."
+    sumber: [TEKNIS]
+  cta.durasi_detik:
+    status: default
+    nilai: 2.2
+    rentang: [1.5, 3.5]
+    satuan: detik
+    alasan: "CTA dibaca paling lambat; ≈ 5 kata × 0,3 s baca + 0,7 s."
+    sumber: [BT-BIBLE, BT-AUDIT]
+  cta.posisi:
+    status: default
+    nilai: akhir
+    pilihan: [akhir, tengah_dan_akhir]
+    alasan: "Satu CTA di akhir di MVP. CTA ganda menambah durasi dan terasa memaksa."
+    sumber: [TEKNIS]
+  cta.gaya:
+    status: default
+    nilai: arah_tempat_link
+    pilihan: [arah_tempat_link, pertanyaan_ab]
+    alasan: "Arahkan ke tempat link per platform (keranjang kuning, link di bio, komentar tersemat). Pertanyaan A/B ala Baru Tau diuji sebagai ide B17, bukan pengganti CTA."
+    sumber: [BT-VIRAL]
+  disclosure.ada:
+    status: default
+    kunci: compliance
+    nilai: true
+    pilihan: [true]
+    alasan: "Disclosure tidak bisa dimatikan oleh eksperimen apa pun."
+    sumber: [R-TIKTOK-SHOP]
+  disclosure.gaya:
+    status: default
+    kunci: compliance
+    nilai: label_persisten
+    pilihan: [label_persisten, label_persisten_dan_vo_akhir]
+    alasan: "Label kecil ('Link afiliasi') sepanjang video + label di teks post/toggle platform. Persisten berarti terlihat sejak frame 0 tanpa bergantung penonton sampai akhir."
+    sumber: [R-TIKTOK-SHOP, H12]
+  disclosure.font_px:
+    status: default
+    kunci: compliance
+    nilai: 36
+    rentang: [32, 56]
+    satuan: px
+    alasan: "Cukup terbaca di HP (Baru Tau: < 30 px hanya dekorasi), cukup kecil supaya tidak menutup produk."
+    sumber: [BT-BASELINE]
+
+  # ---------------------------------------------------------------- varian dan foto
+  varian.per_produk:
+    status: default
+    nilai: 2
+    rentang: [1, 3]
+    alasan: "Dua cukup untuk belajar; lebih dari itu berisiko dibaca platform sebagai konten berulang (H09). Varian wajib beda di hook.tipe atau template, bukan cuma warna."
+    sumber: [R-TIKTOK-ORI, H09]
+  varian.beda_minimal_grup:
+    status: default
+    kunci: compliance
+    nilai: 2
+    rentang: [2, 5]
+    alasan: "Dua varian dari produk yang sama harus beda di ≥ 2 grup parameter (hook, template, foto, VO/naskah). Mencegah 'duplikat yang disamarkan'."
+    sumber: [R-TIKTOK-ORI]
+  foto.maks_dipakai:
+    status: default
+    nilai: 6
+    rentang: [3, 10]
+    alasan: "8 beat, sebagian berbagi foto (crop detail berbeda)."
+    sumber: [TEKNIS]
+  foto.per_beat:
+    status: default
+    nilai: 1
+    rentang: [1, 2]
+    alasan: "Satu foto per beat; beat ≥ 3 s boleh dua (crop detail kedua) untuk memenuhi ganti_visual_maks_detik."
+    sumber: [BT-VIRAL]
+  foto.cover_untuk_beat:
+    status: default
+    nilai: [hook, produk, cta]
+    pilihan: [hook, masalah, produk, fitur, bukti, harga, cta]
+    alasan: "Foto cover (produk utuh) untuk mengenali produk; foto detail untuk fitur. CTA kembali ke cover supaya akhir menyambung ke frame 0."
+    sumber: [BT-BASELINE]
+  foto.sisi_pendek_min_px:
+    status: default
+    nilai: 800
+    rentang: [600, 1080]
+    satuan: px
+    alasan: "Di bawah ini foto hanya boleh tampil sebagai kartu kecil, bukan layar penuh."
+    sumber: [TEKNIS]
+  foto.mode_foto_persegi:
+    status: eksperimen
+    nilai: kartu_di_latar_warna
+    pilihan: [kartu_di_latar_warna, crop_isi, blur_isi]
+    alasan: "Foto marketplace umumnya 1:1. Crop ke 9:16 memotong produk; blur-isi terlihat generik. Kartu di atas latar warna dominan foto = kontrol (H10)."
+    sumber: [H10]
+    eksperimen: EXP-10
+  foto.tolak_watermark_pihak_lain:
+    status: default
+    kunci: compliance
+    nilai: true
+    pilihan: [true]
+    alasan: "Foto dengan watermark toko/kreator lain tidak dipakai (hak cipta + sinyal konten tidak orisinal)."
+    sumber: [R-TIKTOK-ORI, R-SHOPEE-AFF]
+
+  # ---------------------------------------------------------------- posting
+  posting.jam_wib.tiktok:
+    status: eksperimen
+    nilai: ["19:00"]
+    pilihan: ["07:00", "12:00", "17:00", "19:00", "21:00"]
+    alasan: "Hipotesis jam belanja malam (H08). Data akun sendiri mengalahkan data umum."
+    sumber: [H08]
+    eksperimen: EXP-11
+  posting.jam_wib.reels:
+    status: default
+    nilai: ["19:30"]
+    pilihan: ["07:00", "12:00", "17:00", "19:30", "21:00"]
+    alasan: "Sama dengan TikTok, digeser 30 menit supaya tidak bentrok antrian posting."
+    sumber: [H08]
+  posting.jam_wib.shorts:
+    status: default
+    nilai: ["17:00"]
+    pilihan: ["07:00", "12:00", "17:00", "19:00", "21:00"]
+    alasan: "Shorts mendistribusi lebih lambat (berhari-hari); jam kurang menentukan. Slot sore memisahkan antrian."
+    sumber: [R-SHORTS-BENCH]
+  posting.jam_wib.threads:
+    status: default
+    nilai: ["07:30"]
+    pilihan: ["07:30", "12:00"]
+    alasan: "Data Baru Tau/Buffer 2,5 juta post: pagi hari kerja tertinggi di Threads, malam dan Sabtu terendah."
+    sumber: [BT-VIRAL]
+  posting.maks_per_akun_per_hari:
+    status: default
+    kunci: compliance
+    nilai: 2
+    rentang: [1, 3]
+    alasan: "Akun baru dimulai pelan. Lebih dari 3 video jualan/hari dari satu akun mendekati pola spam. Naik ke 3 hanya setelah 30 hari tanpa pelanggaran."
+    sumber: [R-TIKTOK-ORI]
+  posting.jeda_min_antar_post_menit:
+    status: default
+    nilai: 180
+    rentang: [120, 480]
+    satuan: menit
+    alasan: "Post kedua tidak memotong distribusi awal post pertama."
+    sumber: [TEKNIS]
+  posting.jeda_produk_sejenis_jam:
+    status: default
+    nilai: 48
+    rentang: [24, 168]
+    satuan: jam, per akun, kategori yang sama
+    alasan: "Mengurangi kesan akun katalog dan kanibalisasi antar produk sejenis."
+    sumber: [TEKNIS]
+  posting.jeda_varian_produk_sama_hari:
+    status: default
+    kunci: compliance
+    nilai: 7
+    rentang: [3, 30]
+    satuan: hari, per akun
+    alasan: "Varian kedua produk yang sama di akun yang sama paling cepat 7 hari kemudian. File identik ke > 1 akun dilarang sama sekali (kunci compliance, doc 12 §2.3)."
+    sumber: [R-TIKTOK-ORI, H09]
+  ukur.jendela_jam:
+    status: default
+    nilai: 72
+    rentang: [48, 168]
+    satuan: jam setelah tayang
+    alasan: "Snapshot metrik utama untuk eksperimen. Baru Tau memakai 48 jam untuk Threads; TikTok/Shorts punya ekor lebih panjang. Snapshot kedua di 7 hari."
+    sumber: [BT-VIRAL, R-SHORTS-BENCH]
+
+eksperimen:
+  EXP-01:
+    judul: "Durasi total"
+    status: antre
+    lengan: {A: {durasi.target_detik: 22}, B: {durasi.target_detik: 15}, C: {durasi.target_detik: 35}}
+    metrik_utama: komisi_per_1000_views
+    metrik_diagnosis: [avg_watch_pct, completion, ctr_link]
+    pengaman: [hold_3s]
+    unit: video
+    sampel_min_per_lengan: 40
+    durasi_min_hari: 21
+    catatan: "Durasi mengubah avg_watch_pct secara mekanis (video pendek selalu menang persentase), jadi metrik utamanya klik/komisi, bukan watch %."
+  EXP-02:
+    judul: "Tipe hook"
+    status: antre
+    lengan:
+      A: {hook.tipe: pertanyaan}
+      B: {hook.tipe: klaim_angka}
+      C: {hook.tipe: pain}
+      D: {hook.tipe: visual_shock}
+    metrik_utama: hold_3s
+    metrik_diagnosis: [avg_watch_pct, ctr_link]
+    pengaman: [laporan_negatif]
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+    catatan: "Kandidat bandit pertama (doc 12 §4.6): banyak lengan, metrik cepat. price_reveal masuk setelah EXP-09."
+  EXP-03:
+    judul: "Template"
+    status: antre
+    lengan:
+      A: {template.default: masalah_solusi}
+      B: {template.default: fitur_cepat}
+    metrik_utama: ctr_link
+    metrik_diagnosis: [hold_3s, avg_watch_pct]
+    pengaman: [hold_3s]
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+    catatan: "Diblok per kategori; hasil per kategori menjadi dasar template.pilih_per_kategori."
+  EXP-04:
+    judul: "Suara (3 kandidat native Indonesia)"
+    status: siap
+    lengan:
+      A: {vo.voice_id: kandidat_a}
+      B: {vo.voice_id: kandidat_b}
+      C: {vo.voice_id: kandidat_c}
+    metrik_utama: avg_watch_pct
+    metrik_diagnosis: [hold_3s, ctr_link]
+    pengaman: []
+    unit: video
+    sampel_min_per_lengan: 25
+    durasi_min_hari: 14
+    catatan: "Sebelum uji publik: tes dengar buta oleh pemilik (≈ 450 karakter per suara, rekomendasi audit Baru Tau). Hanya dua kandidat terbaik yang masuk uji publik kalau volume kecil."
+  EXP-05:
+    judul: "Produk di frame 0"
+    status: antre
+    lengan: {A: {hook.produk_di_frame0: true}, B: {hook.produk_di_frame0: false}}
+    metrik_utama: hold_3s
+    metrik_diagnosis: [ctr_link]
+    pengaman: [ctr_link]
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+    catatan: "Lengan B boleh menang hold_3s tapi kalah klik. Promosi hanya kalau ctr_link tidak turun > 10% relatif."
+  EXP-06:
+    judul: "Tempo VO"
+    status: antre
+    lengan:
+      A: {vo.tempo_kata_per_detik: 2.6}
+      B: {vo.tempo_kata_per_detik: 2.4}
+      C: {vo.tempo_kata_per_detik: 2.8}
+    metrik_utama: avg_watch_pct
+    metrik_diagnosis: [completion]
+    pengaman: [ctr_link]
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+    catatan: "Tempo diubah lewat jumlah kata naskah di durasi yang sama, bukan speed TTS."
+  EXP-07:
+    judul: "Gaya caption"
+    status: antre
+    lengan: {A: {caption.gaya: per_frasa}, B: {caption.gaya: kata_per_kata}}
+    metrik_utama: avg_watch_pct
+    metrik_diagnosis: [hold_3s]
+    pengaman: []
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+  EXP-08:
+    judul: "Musik"
+    status: antre
+    lengan: {A: {musik.ada: true}, B: {musik.ada: false}}
+    metrik_utama: avg_watch_pct
+    metrik_diagnosis: [hold_3s]
+    pengaman: []
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+  EXP-09:
+    judul: "Harga di video"
+    status: antre
+    lengan: {A: {harga.mode: tanpa_angka}, B: {harga.mode: angka_bertanggal}}
+    metrik_utama: ctr_link
+    metrik_diagnosis: [cvr_order]
+    pengaman: [keluhan_harga]
+    unit: video
+    sampel_min_per_lengan: 40
+    durasi_min_hari: 21
+    syarat: "ADR-P01 diterima (feed membawa price_captured_at); pipeline membuang beat harga kalau harga.umur_data_maks_jam terlewati."
+    catatan: "Diblok per pita harga (< Rp100rb, Rp100–500rb, > Rp500rb); H06 memperkirakan efeknya berlawanan arah antar pita."
+  EXP-10:
+    judul: "Mode foto persegi"
+    status: antre
+    lengan:
+      A: {foto.mode_foto_persegi: kartu_di_latar_warna}
+      B: {foto.mode_foto_persegi: crop_isi}
+    metrik_utama: hold_3s
+    metrik_diagnosis: [avg_watch_pct]
+    pengaman: []
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 14
+  EXP-11:
+    judul: "Jam posting TikTok"
+    status: antre
+    lengan:
+      A: {posting.jam_wib.tiktok: ["19:00"]}
+      B: {posting.jam_wib.tiktok: ["12:00"]}
+      C: {posting.jam_wib.tiktok: ["21:00"]}
+    metrik_utama: views_72j
+    metrik_diagnosis: [ctr_link, komisi_per_1000_views]
+    pengaman: []
+    unit: video
+    sampel_min_per_lengan: 30
+    durasi_min_hari: 21
+    catatan: "Rotasi slot per hari (bukan acak per video) supaya satu akun tidak posting dua kali di jam yang sama."
