@@ -49,6 +49,15 @@ Template `kartu` hanya boleh dipakai untuk **pratinjau tahap naskah** (cek uruta
   - tidak ada bagian produk yang terpotong.
 
   Foto yang tidak bisa dibersihkan tidak dipakai.
+- **Menyatu dengan dunia gambar, wujud tetap asli** (kit `produk()`, bawaan):
+  - garis tinta stiker 4,5 px,
+  - bayangan lembut dua lapis: kontak rapat blur 7 px dan bayangan jatuh blur 26 px ke kanan bawah, searah cahaya kiri atas; menjauh dan memudar saat benda di udara (`tinggi`),
+  - pencahayaan ulang 2.5D: sorot hangat kiri atas, bayangan kanan bawah,
+  - warna ambien adegan meresap tipis (`cahaya` = warna latar, tint ≤ 0,15, kunci `visual.produk_tint_maks`),
+  - tekstur kertas `paperFinish` di atas semuanya,
+  - pengikat terkuat: benda yang digambar **menutupi** produk (tangan memegang, air di atasnya).
+
+  **End card dan close-up memakai warna asli** (`asli: true`). Bentuk produk tidak didistorsi selain squash mendarat ≤ 12%. Perbandingan sebelum/sesudah: `examples/aff001-keset` (render v2).
 - **Detail fitur** (tekstur, alas anti-slip, layar LED) memakai crop foto yang **tidak memuat teks**, dibingkai sebagai call-out gaya episode (lingkaran/kaca pembesar bertinta), bukan kartu.
 - **Hanya satu produk asli per frame.** Produk lain, merek lain, atau logo pihak lain tidak tampil. Kemasan produk dengan mereknya sendiri boleh, karena itu produk yang dipromosikan.
 - **Ukuran:** produk ≥ 640 px tinggi di scene produk, fitur, dan end card (BASELINE 6). Di scene masalah, produk boleh absen atau kecil.

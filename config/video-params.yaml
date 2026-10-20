@@ -707,6 +707,13 @@ parameter:
     rentang: [70, 92]
     alasan: "Kualitas awal; diturunkan otomatis kalau total melewati foto.embed_total_maks_kb. Di atas 90 ukuran naik tanpa beda terlihat setelah platform encode ulang."
     sumber: [BT-SLATE, TEKNIS]
+  visual.produk_tint_maks:
+    status: default
+    kunci: compliance
+    nilai: 0.15
+    rentang: [0.0, 0.15]
+    alasan: "Batas warna ambien adegan yang boleh meresap ke cutout produk (kit aff.js produk(), soft-light). Di atas 0,15 warna produk mulai berubah dan bisa menyesatkan. End card dan close-up memakai warna asli (o.asli). Dicek tests/test_alur.py."
+    sumber: [TEKNIS]
   foto.mode_foto_persegi:
     status: eksperimen
     nilai: kartu_di_latar_warna

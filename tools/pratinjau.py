@@ -60,6 +60,7 @@ def _folder_tulis():
 
 
 KITS = Path(os.environ.get("SLATE_KITS", "/data/apps/slate-studio/kits"))
+KIT_AFF = AKAR / "kits" / "affiliate"
 
 
 def render(bahan, waktu, keluar, template="kartu", skala=0.25, kol=None, label=True, film=None, kit=None):
@@ -88,6 +89,9 @@ def render(bahan, waktu, keluar, template="kartu", skala=0.25, kol=None, label=T
                 shutil.copy(bahan / f, ws / f)
         if (bahan / "aset").is_dir():
             shutil.copytree(bahan / "aset", ws / "aset")
+        for f in sorted(KIT_AFF.glob("*.js")):           # kit affiliate aff_studio → engine/<nama> (seperti tools/slate.py)
+            (ws / "engine").mkdir(exist_ok=True)
+            shutil.copy(f, ws / "engine" / f.name)
         shutil.copytree(FONTS, ws / "fonts")
         handler = functools.partial(_Diam, directory=str(ws))
         srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
