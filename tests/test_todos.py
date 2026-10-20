@@ -117,6 +117,16 @@ class Produksi(unittest.TestCase):
         (self.folder / "cek_akhir.md").write_text("ok")
         self.assertEqual(produksi.keadaan(self.folder), "selesai")
 
+    def test_init_baru_mengarsipkan_folder_utuh(self):
+        (self.folder / "vo.json").write_text("lama")
+        (self.folder / "GAGAL.md").write_text("lama")
+        produksi.main(["init", "--paket", str(self.paket), "--produk", fixture.PRODUK_OK, "--folder", str(self.folder), "--baru"])
+        arsip = list((self.folder.parent / "_arsip").iterdir())
+        self.assertEqual(len(arsip), 1)
+        self.assertTrue((arsip[0] / "vo.json").exists() and (arsip[0] / "GAGAL.md").exists())
+        self.assertFalse((self.folder / "vo.json").exists())
+        self.assertTrue((self.folder / "produk.json").exists())
+
     def test_berjalan_butuh_kunci(self):
         """Penanda run yang tertinggal (SIGKILL/OOM/reboot) bukan produksi berjalan; yang menentukan flock."""
         import fcntl
@@ -130,6 +140,8 @@ class Produksi(unittest.TestCase):
             with open(logs / ".produksi.lock", "w") as k:
                 fcntl.flock(k, fcntl.LOCK_EX)
                 self.assertEqual(produksi.keadaan(self.folder), "berjalan")
+                (logs / ".produksi.run").write_text("1 x %s9 2026-10-20" % self.folder)     # ID lain berawalan sama
+                self.assertEqual(produksi.keadaan(self.folder), "belum")
         finally:
             (logs / ".produksi.run").unlink(missing_ok=True)
 
@@ -147,6 +159,14 @@ class Produksi(unittest.TestCase):
             rows = list(csv.DictReader(f))
         self.assertEqual(len(rows), 1)
         self.assertEqual((rows[0]["status"], rows[0]["platform"]), ("siap_unggah", "shopee_video"))
+        # ditarik konsol (ditolak / diulang setelah disetujui), lalu disetujui lagi: ditawarkan lagi, tetap satu baris
+        log = self.paket / "uploads" / "upload_log.csv"
+        log.write_text(log.read_text().replace("siap_unggah", "ditarik"))
+        self.assertEqual(produksi.main([str(self.folder), "paket-unggah"]), 0)
+        with open(log, newline="") as f:
+            rows = list(csv.DictReader(f))
+        self.assertEqual([r["status"] for r in rows], ["siap_unggah"])
+        self.assertTrue((self.paket / "uploads" / ".upload_log.lock").exists())
 
     def test_biaya(self):
         jl = Path(self.tmp.name) / "sesi.jsonl"
