@@ -79,27 +79,30 @@ Format ini menjadi patokan input frontend (§3).
   - angka volume dan eksperimen di doc 12 perlu dihitung ulang.
 
 - [x] **[pemilik]** Gambar 2026-10-19: diunduh ulang dengan `fetch_images_zip.py` (disetujui pemilik 20 Oktober).
-- [ ] **[pemilik]** Paket berikutnya: sertakan gambar di zip, atau jalankan `fetch_images_zip.py` sebagai langkah tetap. Folder Download Chromium (`/data/storage/chrome-webgui/Downloads`, milik `opc`, mode 700) belum terbaca user `ubuntu`. Kalau mau dipakai langsung, beri izin baca grup/ACL, misalnya `setfacl -R -m u:ubuntu:rX`; Claude tidak mengubah izin folder profil browser tanpa diminta.
+- [x] **[Claude]** Paket berikutnya: konsol web Affiliate → "Impor paket" (centang "unduh gambar") menjalankan `tools/impor_paket.py` (bongkar zip + `fetch_images_zip.py` kalau gambar tidak ikut). Sebelumnya: sertakan gambar di zip, atau jalankan `fetch_images_zip.py` sebagai langkah tetap. Folder Download Chromium (`/data/storage/chrome-webgui/Downloads`, milik `opc`, mode 700) belum terbaca user `ubuntu`. Kalau mau dipakai langsung, beri izin baca grup/ACL, misalnya `setfacl -R -m u:ubuntu:rX`; Claude tidak mengubah izin folder profil browser tanpa diminta.
 - [x] **[pemilik]** Lokasi paket data di server: `/data/apps/affiliate-data/<tanggal>/` (di luar repo; repo publik).
-- [ ] **[pemilik]** ADR-P05: template `film.js` berbasis snapshot, bukan sesi Opus per video.
-- [ ] **[pemilik]** ADR-P02: persetujuan naskah + frame 0 sebelum VO, dan persetujuan batch.
+- [x] ~~ADR-P05~~ digantikan ADR-P06 (diterima).
+- [ ] **[pemilik]** ADR-P02: persetujuan naskah + frame 0 sebelum VO. Persetujuan video final sudah ada di konsol (Setujui / Ulangi dengan catatan / Tolak); persetujuan tahap naskah belum (sekarang kreator langsung lanjut ke VO).
 - [ ] **[pemilik]** ADR-P01: tambahan field penanda promo, lisensi media, `business_note` (lihat §3 butir 2 dan 4).
 - [ ] **[pemilik]** ADR-P03 dan P04: bisa ditunda sampai MVP jalan.
-- [ ] **[pemilik]** 3 kandidat suara native Indonesia dari Voice Library ElevenLabs (EXP-04).
+- [ ] **[pemilik]** 3 kandidat suara native Indonesia dari Voice Library ElevenLabs (EXP-04); isi `AFF_VOICE_ID` di `aff_studio/.env`. Pertimbangkan juga rekaman suara pemilik: Top Creator Shopee mengecualikan video AI (doc 14 §1).
+- [ ] **[pemilik]** Screenshot pemutaran Shopee Video dengan produk tertaut (HP, layar penuh) untuk mengukur zona keranjang kiri bawah (doc 14 §2).
+- [ ] **[pemilik]** Merge PR konsol `erwnlf-dev/baru-tau-autopilot#17` (modul Affiliate) lalu restart `barutau-web`.
 
 ## 5. Verifikasi
 
-- [ ] **[Claude]** Zona aman Shopee Video: screenshot UI lewat Chrome di server, ukur area tombol, keranjang, dan caption.
-- [ ] **[Claude]** Aturan konten Shopee Video untuk affiliate: disclosure, klaim harga, konten orisinal, durasi/format.
-- [ ] **[Claude]** Apakah link Shopee Affiliate mendukung Sub ID per video (halaman *Link Khusus*).
-- [ ] **[Claude]** Metrik per video yang tersedia di Shopee Video dan dashboard affiliate (views, retensi, klik, order), dan bisa diekspor atau tidak.
-- [ ] **[Claude]** (fase 2) Aturan TikTok dan Threads untuk link affiliate, dan API tautan produk TikTok.
+Semua dikerjakan lewat riset web (20 Oktober). Hasil dan sumbernya ada di **`docs/14-aturan-platform.md`**.
+- [x] **Aturan konten Shopee Video:** label "Konten Dihasilkan AI" **wajib** (narasi AI); harga harus sama dengan saat unggah; tanpa nama/logo Shopee; produk ditautkan lewat Tambah Produk; jarak ≥ 1 jam.
+- [x] **Sub ID:** ada (5 nilai), tapi tidak diperlukan di Shopee Video karena tag produk mengatribusi per video. Laporan per Sub ID di Indonesia belum terkonfirmasi.
+- [x] **Metrik:** views, klik produk, pesanan, dan CTR per video ada di Pusat Kreator. Retensi dan watch time tidak ada. Tanpa ekspor atau API untuk kreator, jadi input manual.
+- [x] **Fase 2:** TikTok memakai produk TikTok Shop (bukan link Shopee), dengan disclosure komersial dan label AI. Threads memakai paid partnership; kanal ini perlu dicek di akun affiliate.
+- [~] **Zona aman Shopee Video:** angka resmi tidak ada; keranjang ada di kiri bawah. Sementara `zona_aman.shopee_video.bawah_px` = 620. Pengukuran pasti menunggu screenshot pemilik (§4). Screenshot lewat Chrome server tidak memungkinkan, karena Shopee Video adalah UI aplikasi HP.
 
 ## 6. MVP (urut)
 
 1. [x] **[Claude]** **Loader + validator paket data:** `tools/paket.py` (folder atau zip, produk ditolak/peringatan, `kategori_diatur`, angka di `video_angle` yang tidak ada di `key_features`, umur harga). Paket 2026-10-19: 9/9 siap. Tes dengan fixture yang disamarkan (`tests/fixture.py`).
 2. [x] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret`, `compliance.kategori_diatur`, `disclosure.teks` (dikunci), `foto.embed_total_maks_kb`. Zona aman Shopee Video masih angka sementara (480 px) sampai diukur.
-3. [ ] **[Claude]** **Generator naskah:** satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
+3. [x] ~~**Generator naskah**~~ digantikan sesi kreator (ADR-P06, `CLAUDE.md` langkah 3: naskah ditulis kreator dan divalidasi `produksi.py naskah`). Rencana awal: satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
 3b. [x] **[Claude]** **Pipeline kreator per video (ADR-P06)** dibakukan:
    - `CLAUDE.md` (Mode PRODUKSI 0–12),
    - `run_produksi.sh`: model/effort dikunci; `.claude/kreator.json` tidak membaca `.env` dan tidak mengubah repo; tanpa web search; transkrip dicek `tools/cek_sesi.py`,
@@ -122,7 +125,7 @@ Format ini menjadi patokan input frontend (§3).
    - Render ke-3 lolos QA Slate: 18,8 s, loop 0,85/255, hening sungguhan.
    - Sisa peringatan: LRA 1,5 LU, 2 cue sinkron +2,5 frame di tengah kata VO.
    - **[pemilik]** tonton dan nilai.
-3e. [ ] **[Claude]** **Pelajaran untuk video berikutnya:**
+3e. [x] **[Claude]** **Pelajaran untuk video berikutnya** (diterapkan: `vo.jeda_bagian_detik` 0,7; CLAUDE.md langkah 6 dan 8):
    - `vo.jeda_bagian_detik` 0,7 dan satu jeda musik supaya LRA ≥ 2,5,
    - hentakan foley ditaruh di celah kata, bukan di tengah kata,
    - kaki/aktor sudah di layar di frame setelah potong.
@@ -143,29 +146,36 @@ Format ini menjadi patokan input frontend (§3).
    - musik (lihat 4b),
    - penilaian di HP oleh pemilik,
    - transisi selain potong keras.
-4b. [ ] **[Claude]** **Musik:** partitur per mood dengan `slate_score.py`. Tanpa musik, QA memberi peringatan LRA 1,3 LU (mix datar). `musik.ada = true` adalah kontrol EXP-08.
+4b. [x] **[Claude]** **Musik:** ditulis kreator per video (`score.py`, CLAUDE.md langkah 8); aff001/aff002 lolos QA dengan musik dan foley. Catatan lama: partitur per mood dengan `slate_score.py`. Tanpa musik, QA memberi peringatan LRA 1,3 LU (mix datar). `musik.ada = true` adalah kontrol EXP-08.
 5. [x] **[Claude]** **Integrasi Slate:** `tools/slate.py` (`kuota`, `vo`, `render`, `tunggu`, `qa`, `pratinjau`).
    - URL MCP dibaca dari `.env` dan tidak pernah tercetak.
    - Tool posting dan Telegram ditolak.
    - `vo` menolak membuat ulang kalau `vo.json` sudah ada.
    - `render` menolak timing perkiraan dan file > 2 MB.
-6. [ ] **[Claude]** **QA compliance:**
+6. [x] **[Claude]** **QA compliance:** `tools/qa_compliance.py` (OCR rapidocr di `.venv`).
+   - `foto`: teks tercetak di foto penjual; angka yang tidak ada di data ditandai saat `init`. Di kipas tertangkap "16900", "3000", dan "10.7".
+   - `video`: frame tiap 0,75 s. GAGAL kalau disclosure tidak terbaca atau ada Rp/%/diskon/termurah/promo/gratis; PERIKSA untuk angka asing.
+   - Keset dan kipas: LOLOS (kipas: "100" = layar baterai produk, sudah dijelaskan).
+   - `produksi.py compliance` wajib lolos sebelum paket unggah. Butir awal:
    - setiap kalimat naskah punya sumber,
    - angka di layar ⊂ data produk,
    - tidak ada harga coret atau persen diskon,
    - disclosure ada di setiap frame (OCR),
    - `compliance_note` dipatuhi,
    - kategori yang klaimnya diatur tidak memakai hook `pain`.
-7. [ ] **[Claude]** **Modul konsol `web/modules/affiliate`** (di repo `baru-tau-autopilot`, pola modul `barutau`):
+7. [x] **[Claude]** **Modul konsol `web/modules/affiliate`**: PR `baru-tau-autopilot#17` (161 tes lolos; menunggu merge dan restart oleh pemilik). Isinya: impor paket, produk per paket, antrean produksi + hentikan, halaman produk (video, QA, compliance, biaya, cek akhir, caption/link), Setujui / Ulangi dengan catatan / Tolak, halaman Unggah dengan daftar periksa Shopee, dan kabar ke Web Push. Rencana awal (di repo `baru-tau-autopilot`, pola modul `barutau`):
    - unggah/pilih paket data,
    - antrean naskah (setuju/ganti hook/tolak),
    - antrean video final,
    - unduh paket upload,
    - input metrik.
-8. [ ] **[Claude]** **Paket upload untuk sesi Chrome:** `final.mp4`, caption, link affiliate, `video_id`, `variant_id`, ditambah baris baru di `uploads/upload_log.csv` (format paket data).
-9. [ ] **[Claude]** **Tabel publikasi + log biaya per video:** karakter TTS, token LLM, detik render.
+8. [x] **[Claude]** **Paket upload:** `produksi.py paket-unggah` → `<paket>/unggah/<video_id>/` (mp4, caption, meta) + baris `uploads/upload_log.csv` (`siap_unggah` → `terunggah` dari konsol). Rencana awal: `final.mp4`, caption, link affiliate, `video_id`, `variant_id`, ditambah baris baru di `uploads/upload_log.csv` (format paket data).
+9. [x] **[Claude]** **Log biaya + tabel publikasi:** `tools/biaya.py` → `biaya.json` (dipanggil `run_produksi.sh`; kipas US$10,16, 256 karakter, 3 render); publikasi di `upload_log.csv`. Rencana awal: karakter TTS, token LLM, detik render.
 
 ## 7. Setelah MVP jalan
+
+**Catatan operasi:** jangan mengedit `run_produksi.sh` di tempat saat produksi berjalan. Bash membacanya baris demi baris, jadi perubahan menggeser posisi baca proses yang sedang jalan. Tulis versi baru ke file lain lalu `mv` (inode baru).
+
 
 - [ ] Pilot 30 video → hitung σ metrik → mulai eksperimen sesuai doc 12 §4.7, diawali EXP-04 (suara) dan EXP-02 (hook).
 - [ ] Ide B2–B19 dari doc 12 §6. B1 (skor produk) sudah dikerjakan pemilik di sisi Chrome (`CONTEXT.md` §4); aff_studio hanya membaca `score`.

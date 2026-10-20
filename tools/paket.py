@@ -180,6 +180,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("cek")
     c.add_argument("paket")
+    c.add_argument("--json", action="store_true", help="daftar produk + ditolak/peringatan sebagai JSON (konsol web)")
     p = sub.add_parser("produk")
     p.add_argument("paket")
     p.add_argument("product_id")
@@ -196,6 +197,9 @@ def main(argv=None):
                 return 1 if ditolak else 0
         print("product_id %s tidak ada" % a.product_id, file=sys.stderr)
         return 2
+    if getattr(a, "json", False):
+        print(json.dumps([{"produk": p, "ditolak": d, "peringatan": w} for p, d, w in hasil], ensure_ascii=False))
+        return 0
     n_tolak = 0
     for produk, ditolak, peringatan in hasil:
         n_tolak += bool(ditolak)

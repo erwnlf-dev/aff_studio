@@ -11,6 +11,8 @@
     python3 tools/produksi.py <folder> skor                      jalankan score.py → score.json, lalu audit
     python3 tools/produksi.py <folder> render                    render_film (META.dur dari film.js), tunggu, unduh final.mp4
     python3 tools/produksi.py <folder> qa                        ringkasan QA render terakhir (status.json)
+    python3 tools/produksi.py <folder> compliance                OCR final.mp4: disclosure tiap frame, tanpa Rp/%/diskon
+    python3 tools/produksi.py <folder> paket-unggah [--platform]  (setelah disetujui pemilik) → <paket>/unggah/<video_id>/
     python3 tools/produksi.py <folder> sheet                     final_sheet.jpg: 20 frame dari final.mp4 (cek tanpa suara)
     python3 tools/produksi.py <folder> status                    langkah yang sudah/belum
 
@@ -84,6 +86,51 @@ def foto_sheet(produk, tujuan):
     sheet.save(tujuan, quality=88)
 
 
+# Hasil satu run. Run ulang di folder yang sama memindahkannya ke _sebelum/<ts>/ (konsol web melakukan hal yang sama
+# sebelum memanggil run_produksi.sh): GAGAL.md lama tidak boleh menutupi video baru, dan final.mp4/qa_compliance.json
+# lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap dipakai lagi.
+HASIL_RUN = ("final.mp4", "final_sheet.jpg", "cek_akhir.md", "qa_compliance.json", "teks_post.txt", "status.json",
+             "biaya.json", "GAGAL.md")
+
+
+def arsipkan_hasil(folder):
+    import datetime
+    ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    folder = Path(folder)
+    if (folder / "review.json").exists():
+        (folder / "review.json").rename(folder / ("review_%s.json" % ts))
+    lama = [n for n in HASIL_RUN if (folder / n).exists()]
+    if not lama:
+        return None
+    tujuan = folder / "_sebelum" / ts
+    tujuan.mkdir(parents=True, exist_ok=True)
+    for n in lama:
+        (folder / n).rename(tujuan / n)
+    return tujuan
+
+
+def kunci_dipegang():
+    """True kalau ada yang memegang flock logs/.produksi.lock (dari /proc/locks, tanpa ikut mengunci)."""
+    import os
+    f = AKAR / "logs" / ".produksi.lock"
+    try:
+        st = f.stat()
+        baris = Path("/proc/locks").read_text().splitlines()
+    except OSError:
+        return False
+    for b in baris:
+        bagian = b.split()
+        if "->" in bagian or len(bagian) < 6 or bagian[1] != "FLOCK":
+            continue
+        try:
+            maj, mnr, ino = bagian[5].split(":")
+            if (int(ino), int(maj, 16), int(mnr, 16)) == (st.st_ino, os.major(st.st_dev), os.minor(st.st_dev)):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def cmd_init(a):
     params = cek_params.resolve(cek_params.load())
     hasil = {p["id"]: (p, d, w) for p, d, w in paket.muat(a.paket, params)}
@@ -94,6 +141,9 @@ def cmd_init(a):
         raise ProduksiError("produk ditolak validator paket: " + "; ".join(ditolak))
     folder = Path(a.folder) if a.folder else Path(a.paket) / "produksi" / a.produk
     folder.mkdir(parents=True, exist_ok=True)
+    arsip = arsipkan_hasil(folder)
+    if arsip:
+        print("hasil run sebelumnya diarsipkan: %s" % arsip)
     snap = cek_params.snapshot(cek_params.load())
     dl = data_layar(produk, params)
     (folder / "produk.json").write_text(json.dumps({"produk": produk, "peringatan": peringatan}, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -125,6 +175,9 @@ def cmd_init(a):
     print("urutan beat: %s" % urutan)
     for w in peringatan:
         print("peringatan: " + w)
+    if VENV_PY.exists() and not (folder / "teks_foto.json").exists():
+        print("teks tercetak di foto penjual (tools/qa_compliance.py foto → teks_foto.json):")
+        subprocess.run([str(VENV_PY), str(TOOLS / "qa_compliance.py"), "foto", str(folder)], cwd=AKAR)
     print("berikutnya: buka foto_sheet.jpg, pilih foto bersih → cutout; tulis naskah.json → naskah")
     return 0
 
@@ -234,6 +287,10 @@ def cmd_render(a):
     ren = st.get("render") or {}
     q = ren.get("qa") or {}
     print("render: %s | QA lolos: %s" % (ren.get("state"), q.get("lolos")))
+    if ren.get("error"):                        # mis. state data_gagal (cek data Slate sebelum render)
+        print("ERROR: %s" % ren["error"])
+    for m in ren.get("masalah") or []:
+        print("MASALAH (cek data): %s" % m)
     for m in q.get("masalah") or []:
         print("MASALAH: " + m)
     for m in q.get("peringatan") or []:
@@ -264,6 +321,62 @@ def cmd_qa(a):
     return 0 if q.get("lolos") else 1
 
 
+def cmd_compliance(a):
+    """OCR frame final.mp4: disclosure di setiap frame, tanpa Rp/%/diskon, angka asing ditandai (tools/qa_compliance.py)."""
+    if not VENV_PY.exists():
+        raise ProduksiError("venv belum ada (rembg + rapidocr_onnxruntime)")
+    r = subprocess.run([str(VENV_PY), str(TOOLS / "qa_compliance.py"), "video", str(a.folder)], cwd=AKAR)
+    return r.returncode
+
+
+def video_id(folder):
+    st = json.loads((Path(folder) / "status.json").read_text(encoding="utf-8"))
+    return "%s-%s" % (meta(folder)["produk"], st["job_id"])
+
+
+def cmd_paket_unggah(a):
+    """Video yang disetujui pemilik → <paket>/unggah/<video_id>/ (mp4, caption, meta) + baris uploads/upload_log.csv
+    (format paket data sesi Chrome) berstatus siap_unggah. Mensyaratkan QA Slate dan QA compliance lolos."""
+    import csv
+    import datetime
+    import shutil
+    folder = Path(a.folder)
+    m = meta(folder)
+    st = json.loads((folder / "status.json").read_text(encoding="utf-8"))
+    if not ((st.get("render") or {}).get("qa") or {}).get("lolos"):
+        raise ProduksiError("QA Slate belum lolos")
+    qc = folder / "qa_compliance.json"
+    if not qc.exists() or not json.loads(qc.read_text(encoding="utf-8")).get("lolos"):
+        raise ProduksiError("QA compliance belum lolos (python3 tools/produksi.py <folder> compliance)")
+    produk = json.loads((folder / "produk.json").read_text(encoding="utf-8"))["produk"]
+    vid = video_id(folder)
+    tujuan = Path(m["paket"]) / "unggah" / vid
+    tujuan.mkdir(parents=True, exist_ok=True)
+    shutil.copy(folder / "final.mp4", tujuan / (vid + ".mp4"))
+    caption = (folder / "teks_post.txt").read_text(encoding="utf-8").strip()
+    (tujuan / "caption.txt").write_text(caption + "\n", encoding="utf-8")
+    info = {"video_id": vid, "variant_id": m.get("variant_id"), "product_id": produk["id"], "nama": produk["nama"],
+            "affiliate_link": produk["link"], "job_id": st["job_id"], "durasi_s": ((st.get("render") or {}).get("qa") or {}).get("durasi"),
+            "disetujui": datetime.datetime.now().isoformat(timespec="seconds"), "platform": a.platform}
+    (tujuan / "meta.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
+    log = Path(m["paket"]) / "uploads" / "upload_log.csv"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    baru = not log.exists() or log.stat().st_size == 0
+    sudah = set()
+    if not baru:
+        with open(log, newline="", encoding="utf-8") as f:
+            sudah = {(r.get("video_file"), r.get("platform")) for r in csv.DictReader(f)}
+    berkas = str(tujuan / (vid + ".mp4"))
+    if (berkas, a.platform) not in sudah:
+        with open(log, "a", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            if baru:
+                w.writerow(["timestamp", "product_id", "video_file", "platform", "caption", "affiliate_link", "status", "post_url", "notes"])
+            w.writerow([info["disetujui"], produk["id"], berkas, a.platform, caption, produk["link"], "siap_unggah", "", "video_id=" + vid])
+    print("paket unggah: %s" % tujuan)
+    return 0
+
+
 def cmd_sheet(a):
     folder = Path(a.folder)
     from PIL import Image, ImageDraw
@@ -290,12 +403,34 @@ def cmd_sheet(a):
 LANGKAH = [("produksi.json", "init"), ("foto_sheet.jpg", "init"), ("cutout_sheet.jpg", "cutout"), ("aset/foto.js", "cutout"),
            ("naskah.txt", "naskah"), ("vo.json", "vo"), ("kata_koreksi.json", "vo"), ("brief.md", "brief"),
            ("pratinjau_r1.jpg", "pratinjau r1"), ("pratinjau_r2.jpg", "pratinjau r2"), ("score.json", "skor"),
-           ("ledger.md", "ledger"), ("final.mp4", "render"), ("final_sheet.jpg", "sheet"), ("cek_akhir.md", "cek akhir"),
-           ("teks_post.txt", "teks post")]
+           ("ledger.md", "ledger"), ("final.mp4", "render"), ("qa_compliance.json", "compliance"), ("final_sheet.jpg", "sheet"),
+           ("cek_akhir.md", "cek akhir"), ("teks_post.txt", "teks post"), ("biaya.json", "biaya")]
+
+
+def keadaan(folder):
+    """belum | berjalan | gagal | selesai | disetujui | ditolak | ulang — dibaca konsol web dan status --json."""
+    folder = Path(folder)
+    run = AKAR / "logs" / ".produksi.run"
+    if run.exists() and str(folder) in run.read_text(encoding="utf-8", errors="replace") and kunci_dipegang():
+        return "berjalan"
+    rv = folder / "review.json"
+    if rv.exists():
+        st = json.loads(rv.read_text(encoding="utf-8")).get("status")
+        if st in ("disetujui", "ditolak", "ulang"):
+            return st
+    if (folder / "GAGAL.md").exists():
+        return "gagal"
+    if (folder / "final.mp4").exists() and (folder / "cek_akhir.md").exists():
+        return "selesai"
+    return "belum" if not (folder / "naskah.txt").exists() else "terhenti"
 
 
 def cmd_status(a):
     folder = Path(a.folder)
+    if a.json:
+        print(json.dumps({"keadaan": keadaan(folder), "langkah": [{"file": f, "langkah": l, "ada": (folder / f).exists()} for f, l in LANGKAH]}))
+        return 0
+    print("keadaan: " + keadaan(folder))
     for f, langkah in LANGKAH:
         print("%s %-18s %s" % ("✔" if (folder / f).exists() else "·", langkah, f))
     return 0
@@ -320,8 +455,12 @@ def main(argv=None):
         s.add_argument("--crop")
         s.add_argument("--model", choices=["isnet-general-use", "u2net", "u2netp", "silueta"],
                        help="model rembg (bawaan isnet-general-use; u2net kadang lebih baik untuk produk gelap)")
-        for n in ("naskah", "kata", "audit", "skor", "render", "qa", "sheet", "status"):
+        for n in ("naskah", "kata", "audit", "skor", "render", "qa", "compliance", "sheet"):
             sub.add_parser(n)
+        s = sub.add_parser("status")
+        s.add_argument("--json", action="store_true")
+        s = sub.add_parser("paket-unggah")
+        s.add_argument("--platform", default="shopee_video", choices=["shopee_video", "tiktok", "threads"])
         s = sub.add_parser("vo")
         s.add_argument("--voice")
         s = sub.add_parser("pratinjau")
@@ -331,7 +470,8 @@ def main(argv=None):
         s.add_argument("--slate", action="store_true")
         a = ap.parse_args(argv)
         fn = {"cutout": cmd_cutout, "naskah": cmd_naskah, "vo": cmd_vo, "kata": cmd_kata, "audit": cmd_audit,
-              "pratinjau": cmd_pratinjau, "skor": cmd_skor, "render": cmd_render, "qa": cmd_qa, "sheet": cmd_sheet,
+              "pratinjau": cmd_pratinjau, "skor": cmd_skor, "render": cmd_render, "qa": cmd_qa, "compliance": cmd_compliance,
+              "paket-unggah": cmd_paket_unggah, "sheet": cmd_sheet,
               "status": cmd_status}[a.cmd]
     try:
         return fn(a)

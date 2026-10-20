@@ -86,6 +86,11 @@ Data (doc 13 §4): produk terlihat di median 0,07 detik, dan manfaat/bukti di me
 - **Caption** memakai slab gaya episode (kertas bertinta untuk midcentury): ≥ 64 px, ≤ 7 kata, 1 kata disorot, di atas zona UI bawah. Angka sebagai digit di caption, sebagai huruf di VO.
 - **Teks kunci** ≤ 3 kata per scene (≥ 56 px), bisa dibaca tanpa caption.
 - **Label disclosure** "Link afiliasi" tampil di setiap frame (kunci compliance), digambar dengan gaya episode (tag kecil bertinta), tetap terbaca (≥ 32 px, kontras ≥ 4,5:1).
+- **Saat unggah ke Shopee Video:**
+  - toggle **"Konten Dihasilkan AI" wajib**, karena narasi memakai suara AI (doc 14 §1),
+  - produk ditautkan lewat Tambah Produk,
+  - tanpa nama/logo Shopee di video,
+  - aksi dan teks penting tetap di atas y = 1.300 sampai zona keranjang (kiri bawah) diukur.
 
 ## TERLARANG khusus affiliate (tambahan daftar Baru Tau)
 
