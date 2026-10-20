@@ -107,6 +107,9 @@ timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --eff
   --disallowedTools "WebSearch" "WebFetch" "Bash(curl:*)" "Bash(wget:*)" "Bash(python3 tools/slate.py render:*)" "Bash(python3 tools/slate.py vo:*)" \
   --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" &
 ANAK=$!
+# SIGTERM yang tiba sebelum ANAK terisi (bash menunda trap selama $(claude --version) dan sejenisnya) hanya menyalakan
+# DIHENTIKAN; teruskan sekarang supaya claude yang baru diluncurkan ikut berhenti
+[ -n "$DIHENTIKAN" ] && kill -TERM "$ANAK" 2>/dev/null || true
 # wait kembali lebih awal saat trap jalan; ulangi sampai timeout (dan pohonnya) selesai
 while :; do
   wait "$ANAK" && { STATUS="${STATUS:-0}"; break; } || STATUS=$?

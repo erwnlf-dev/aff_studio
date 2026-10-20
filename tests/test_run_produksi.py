@@ -16,7 +16,10 @@ import fixture  # noqa: E402
 
 AKAR = Path(__file__).resolve().parent.parent
 CLAUDE_TIRUAN = """#!/usr/bin/env bash
-[ "${1:-}" = "--version" ] && { echo "tiruan 0"; exit 0; }
+if [ "${1:-}" = "--version" ]; then
+  [ -f "$(dirname "$0")/versi_lambat" ] && { touch "$(dirname "$0")/versi_mulai"; sleep 2; }
+  echo "tiruan 0"; exit 0
+fi
 sleep 300 &
 echo $! > "$(dirname "$0")/claude_anak.txt"
 wait
@@ -79,6 +82,25 @@ class RunProduksi(unittest.TestCase):
         cucu = int(anak.read_text())                   # sleep anak claude tiruan: ikut mati lewat timeout
         time.sleep(0.5)
         self.assertFalse(hidup(cucu))
+
+
+    def test_dihentikan_sebelum_anak_diketahui(self):
+        """SIGTERM saat bash menunggu $(claude --version): trap tertunda, ANAK masih kosong. claude yang diluncurkan
+        sesudahnya harus ikut dihentikan (dulu jalan terus sampai 180 menit)."""
+        t = Path(self.tmp.name)
+        (t / "versi_lambat").write_text("1")
+        p = self.jalankan()
+        batas = time.monotonic() + 120
+        while not (t / "versi_mulai").exists():
+            self.assertLess(time.monotonic(), batas)
+            time.sleep(0.05)
+        os.kill(p.pid, signal.SIGTERM)
+        self.assertEqual(p.wait(30), 143)
+        self.assertEqual([x["judul"] for x in self.kabar()], ["Affiliate: produksi dihentikan"])
+        anak = t / "claude_anak.txt"
+        if anak.exists():
+            time.sleep(0.5)
+            self.assertFalse(hidup(int(anak.read_text())))
 
 
 if __name__ == "__main__":
