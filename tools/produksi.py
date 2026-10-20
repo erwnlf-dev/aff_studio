@@ -86,6 +86,51 @@ def foto_sheet(produk, tujuan):
     sheet.save(tujuan, quality=88)
 
 
+# Hasil satu run. Run ulang di folder yang sama memindahkannya ke _sebelum/<ts>/ (konsol web melakukan hal yang sama
+# sebelum memanggil run_produksi.sh): GAGAL.md lama tidak boleh menutupi video baru, dan final.mp4/qa_compliance.json
+# lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap dipakai lagi.
+HASIL_RUN = ("final.mp4", "final_sheet.jpg", "cek_akhir.md", "qa_compliance.json", "teks_post.txt", "status.json",
+             "biaya.json", "GAGAL.md")
+
+
+def arsipkan_hasil(folder):
+    import datetime
+    ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    folder = Path(folder)
+    if (folder / "review.json").exists():
+        (folder / "review.json").rename(folder / ("review_%s.json" % ts))
+    lama = [n for n in HASIL_RUN if (folder / n).exists()]
+    if not lama:
+        return None
+    tujuan = folder / "_sebelum" / ts
+    tujuan.mkdir(parents=True, exist_ok=True)
+    for n in lama:
+        (folder / n).rename(tujuan / n)
+    return tujuan
+
+
+def kunci_dipegang():
+    """True kalau ada yang memegang flock logs/.produksi.lock (dari /proc/locks, tanpa ikut mengunci)."""
+    import os
+    f = AKAR / "logs" / ".produksi.lock"
+    try:
+        st = f.stat()
+        baris = Path("/proc/locks").read_text().splitlines()
+    except OSError:
+        return False
+    for b in baris:
+        bagian = b.split()
+        if "->" in bagian or len(bagian) < 6 or bagian[1] != "FLOCK":
+            continue
+        try:
+            maj, mnr, ino = bagian[5].split(":")
+            if (int(ino), int(maj, 16), int(mnr, 16)) == (st.st_ino, os.major(st.st_dev), os.minor(st.st_dev)):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def cmd_init(a):
     params = cek_params.resolve(cek_params.load())
     hasil = {p["id"]: (p, d, w) for p, d, w in paket.muat(a.paket, params)}
@@ -96,6 +141,9 @@ def cmd_init(a):
         raise ProduksiError("produk ditolak validator paket: " + "; ".join(ditolak))
     folder = Path(a.folder) if a.folder else Path(a.paket) / "produksi" / a.produk
     folder.mkdir(parents=True, exist_ok=True)
+    arsip = arsipkan_hasil(folder)
+    if arsip:
+        print("hasil run sebelumnya diarsipkan: %s" % arsip)
     snap = cek_params.snapshot(cek_params.load())
     dl = data_layar(produk, params)
     (folder / "produk.json").write_text(json.dumps({"produk": produk, "peringatan": peringatan}, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -363,7 +411,7 @@ def keadaan(folder):
     """belum | berjalan | gagal | selesai | disetujui | ditolak | ulang — dibaca konsol web dan status --json."""
     folder = Path(folder)
     run = AKAR / "logs" / ".produksi.run"
-    if run.exists() and str(folder) in run.read_text(encoding="utf-8", errors="replace"):
+    if run.exists() and str(folder) in run.read_text(encoding="utf-8", errors="replace") and kunci_dipegang():
         return "berjalan"
     rv = folder / "review.json"
     if rv.exists():

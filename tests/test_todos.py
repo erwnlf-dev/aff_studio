@@ -99,6 +99,40 @@ class Produksi(unittest.TestCase):
         (self.folder / "review.json").write_text(json.dumps({"status": "disetujui"}))
         self.assertEqual(produksi.keadaan(self.folder), "disetujui")
 
+    def test_init_ulang_mengarsipkan_hasil_run_sebelumnya(self):
+        """GAGAL.md lama tidak boleh menutupi video baru; final.mp4/qa_compliance.json lama tidak boleh terbaca sebagai
+        hasil run baru. VO dan naskah tetap dipakai."""
+        for n in ("GAGAL.md", "final.mp4", "cek_akhir.md", "qa_compliance.json", "naskah.txt", "vo.json"):
+            (self.folder / n).write_text("lama")
+        (self.folder / "review.json").write_text(json.dumps({"status": "ulang"}))
+        self.assertEqual(produksi.keadaan(self.folder), "ulang")
+        produksi.main(["init", "--paket", str(self.paket), "--produk", fixture.PRODUK_OK, "--folder", str(self.folder)])
+        self.assertEqual(produksi.keadaan(self.folder), "terhenti")
+        arsip = list((self.folder / "_sebelum").iterdir())
+        self.assertEqual(len(arsip), 1)
+        self.assertEqual(sorted(p.name for p in arsip[0].iterdir()), ["GAGAL.md", "cek_akhir.md", "final.mp4", "qa_compliance.json"])
+        self.assertTrue((self.folder / "vo.json").exists() and (self.folder / "naskah.txt").exists())
+        self.assertEqual(len(list(self.folder.glob("review_*.json"))), 1)
+        (self.folder / "final.mp4").write_bytes(b"baru")
+        (self.folder / "cek_akhir.md").write_text("ok")
+        self.assertEqual(produksi.keadaan(self.folder), "selesai")
+
+    def test_berjalan_butuh_kunci(self):
+        """Penanda run yang tertinggal (SIGKILL/OOM/reboot) bukan produksi berjalan; yang menentukan flock."""
+        import fcntl
+        logs = produksi.AKAR / "logs"
+        if (logs / ".produksi.run").exists() or produksi.kunci_dipegang():
+            self.skipTest("ada produksi sungguhan yang berjalan")
+        logs.mkdir(exist_ok=True)
+        try:
+            (logs / ".produksi.run").write_text("1 x %s 2026-10-20" % self.folder)
+            self.assertEqual(produksi.keadaan(self.folder), "belum")
+            with open(logs / ".produksi.lock", "w") as k:
+                fcntl.flock(k, fcntl.LOCK_EX)
+                self.assertEqual(produksi.keadaan(self.folder), "berjalan")
+        finally:
+            (logs / ".produksi.run").unlink(missing_ok=True)
+
     def test_paket_unggah(self):
         (self.folder / "final.mp4").write_bytes(b"MP4")
         (self.folder / "teks_post.txt").write_text("caption\n(link afiliasi)\n")

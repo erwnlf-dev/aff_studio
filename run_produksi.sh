@@ -25,6 +25,8 @@ BIN="$(env_val CLAUDE_BIN)"; BIN="${BIN:-$(command -v claude || echo "$HOME/.loc
 [ -x "$BIN" ] || { echo "perintah claude tidak ditemukan; isi CLAUDE_BIN di .env" >&2; exit 127; }
 
 mkdir -p logs
+# Kunci produksi = flock fd 9. Diwariskan ke timeout → claude → alatnya (tanpa 9>&-), jadi kunci baru lepas setelah
+# seluruh pohon produksi mati; konsol web membaca "produksi berjalan" dari kunci ini (/proc/locks), bukan dari PID.
 exec 9> logs/.produksi.lock
 flock -n 9 || { echo "produksi lain masih berjalan" >&2; exit 3; }
 
@@ -42,7 +44,19 @@ with open(f, "a", encoding="utf-8") as o:
 PY
 }
 trap 'rm -f logs/.produksi.run "${SETTINGS:-}"' EXIT
-python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER"
+# Dihentikan (konsol web "Hentikan", kill): teruskan ke timeout, yang meneruskan ke grup prosesnya sendiri (claude dan
+# alatnya; -k 120 = SIGKILL kalau masih hidup), lalu tunggu sampai benar-benar mati sebelum keluar.
+ANAK=""; DIHENTIKAN=""
+henti() { DIHENTIKAN=1; [ -n "$ANAK" ] && kill -TERM "$ANAK" 2>/dev/null || true; }
+trap henti TERM INT HUP
+dihentikan() {
+  kabar info "Affiliate: produksi dihentikan" "$ID dihentikan pemilik. Voiceover yang sudah ada dipakai lagi kalau diproduksi ulang."
+  exit 143; }
+python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER" || {
+  [ -n "$DIHENTIKAN" ] && dihentikan
+  kabar gagal "Affiliate: produksi tidak bisa dimulai" "$ID: tools/produksi.py init gagal. Lihat logs/web_$ID.out."
+  exit 4; }
+[ -n "$DIHENTIKAN" ] && dihentikan
 
 TS="$(date +%F_%H%M)"; LOG="logs/${TS}_produksi_${ID}.log"; JSONL="logs/${TS}_produksi_${ID}.jsonl"
 PROMPT="Mode PRODUKSI (CLAUDE.md). Tanggal WIB: $(TZ=Asia/Jakarta date +%F).
@@ -67,8 +81,19 @@ timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --eff
   --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Bash(python3 tools/produksi.py:*)" "Bash(python3 $REPO/tools/produksi.py:*)" \
     "Bash(python3 tools/slate.py kuota)" "Bash(python3 $REPO/tools/slate.py kuota)" "Bash(ls:*)" \
   --disallowedTools "WebSearch" "WebFetch" "Bash(curl:*)" "Bash(wget:*)" "Bash(python3 tools/slate.py render:*)" "Bash(python3 tools/slate.py vo:*)" \
-  --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" 9>&- || STATUS=$?
+  --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" &
+ANAK=$!
+# wait kembali lebih awal saat trap jalan; ulangi sampai timeout (dan pohonnya) selesai
+while :; do
+  wait "$ANAK" && { STATUS="${STATUS:-0}"; break; } || STATUS=$?
+  kill -0 "$ANAK" 2>/dev/null || break
+done
 STATUS="${STATUS:-0}"
+if [ -n "$DIHENTIKAN" ]; then
+  echo "dihentikan $(date -Is) status=$STATUS" >> "$LOG"
+  python3 tools/biaya.py "$FOLDER" "$JSONL" >> "$LOG" 2>&1 || true
+  dihentikan
+fi
 python3 tools/cek_sesi.py "$JSONL" "$MODEL" >> "$LOG" 2>&1 || STATUS=90
 python3 tools/biaya.py "$FOLDER" "$JSONL" >> "$LOG" 2>&1 || true
 echo "selesai $(date -Is) status=$STATUS" >> "$LOG"
