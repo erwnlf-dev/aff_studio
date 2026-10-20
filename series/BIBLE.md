@@ -111,6 +111,7 @@ Seperti Baru Tau:
 - hentakan 1 frame setelah gambarnya, 3–6 dB di atas musik.
 
 Khusus affiliate:
+- **Musik adalah alas yang kontinu** (catatan pemilik 20 Okt): tidak hilang-muncul di luar hening, level antarbagian rata (±3 dB), dinamika lewat aransemen. Di sekitar hentakan musik diredam 3 dB, tidak dihapus. Ini berbeda dari Baru Tau, yang memakai kontras level antarbagian untuk LRA.
 - **Musik lebih rapat ritmenya** (100–120 BPM) karena video lebih pendek. Potongan scene jatuh di ketukan kalau memungkinkan (`frame per ketukan = 24 × 60 / BPM`).
 - **Tanpa lagu berlisensi atau suara tren** yang dibakar ke file (kunci `musik.sumber`).
 - **Suara VO:** native Indonesia (EXP-04). Sampai dipilih, pakai suara yang sama dengan Baru Tau, dan catat hal itu di brief.

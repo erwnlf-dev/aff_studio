@@ -20,6 +20,9 @@ Checks (each "GAGAL" line fails the audit, exit 1; usage or unreadable files exi
   - render contract: no Math.random, Date, performance.now, timers, requestAnimationFrame, own fonts in film.js,
   - CUES: unique ids, 0 <= t <= META.dur, a cue with `kata` lands within +-1 frame of that word's start,
   - score hits: the cue exists, the hit lands 1 frame after it (0.5-1.5 frames), not inside `hening`, not after durasi,
+  - music bed (aff_studio, owner note 20 Oct: "musik hilang muncul"): outside the `hening` windows the music never
+    drops out (no 0.5 s window more than musik.lubang_db below the median music level) and its level spread
+    (p10-p90 of 0.5 s windows) stays within musik.rentang_level_maks_db,
   - audit.json: every expectation resolves to a time inside the film, and its `cue` (if named) is on that frame.
 
 film.js is evaluated by node (no document/window; imports such as ./engine/toon.js are replaced by inert stubs;
@@ -36,6 +39,53 @@ import tempfile
 from pathlib import Path
 
 EPS = 1e-3
+# Musik vs foley di score.json (nama instrumen dari slate_score.py), dengan lama bunyinya (sama dengan end_of di
+# partitur contoh). celesta/kick/stab/bell dipakai juga untuk hentakan, jadi tidak dihitung sebagai alas musik.
+MUSIK = {"vib", "marimba", "pluck", "flute", "brush", "ride", "pad"}
+EKOR_MUSIK = {"marimba": 0.6, "ride": 1.2}
+JENDELA_MUSIK = 0.5
+# Bawaan = config/video-params.yaml (dibaca kalau PyYAML ada): musik.lubang_db, musik.rentang_level_maks_db
+BATAS_MUSIK = {"musik.lubang_db": 12.0, "musik.rentang_level_maks_db": 12.0}
+
+
+def batas_musik():
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import cek_params
+        p = cek_params.resolve(cek_params.load())
+        return {k: float(p.get(k, v)) for k, v in BATAS_MUSIK.items()}
+    except Exception:  # noqa: BLE001  (tanpa PyYAML: nilai bawaan yang sama)
+        return dict(BATAS_MUSIK)
+
+
+def level_musik(sc):
+    """[(t, dB)] energi alas musik per jendela 0,5 s (langkah 0,25 s) di luar hening ±0,2 s; dB relatif bebas."""
+    import math
+
+    def lama(nama, a):
+        if nama in ("vib", "pluck", "flute", "pad"):
+            return float(a[1]) + 0.3
+        if nama == "brush":
+            return float(a[0])
+        return EKOR_MUSIK.get(nama, 0.5)
+    ev = []
+    for e in sc.get("events") or []:
+        try:
+            if e[1] in MUSIK:
+                ev.append((float(e[0]), float(e[0]) + lama(e[1], e[2]), float(e[3])))
+        except (IndexError, TypeError, ValueError):
+            continue
+    if not ev:
+        return []
+    dur, hen = float(sc.get("durasi") or 0), [tuple(h[:2]) for h in sc.get("hening") or []]
+    out, t = [], JENDELA_MUSIK
+    while t <= dur - 0.4 + EPS:
+        a = t - JENDELA_MUSIK
+        if not any(h0 - 0.2 < t and a < h1 + 0.2 for h0, h1 in hen):
+            E = sum(g * g * (min(t, z) - max(a, s)) / JENDELA_MUSIK for s, z, g in ev if s < t and z > a)
+            out.append((round(t, 2), 10 * math.log10(E) if E > 0 else -99.0))
+        t += 0.25
+    return out
 BANNED = [
     (r"\bMath\.random\s*\(", "Math.random (pakai rng(seed) dari engine)"),
     (r"\bDate\.now\s*\(|\bnew\s+Date\b", "Date (film harus fungsi murni dari t)"),
@@ -298,6 +348,20 @@ def main(argv):
                 hasil(False, msg + "; setelah durasi partitur")
             else:
                 hasil(0.5 - EPS <= f <= 1.5 + EPS, msg)
+        # musik kontinu: tidak hilang-muncul, tidak naik-turun tajam antarbagian
+        lv = level_musik(sc)
+        if not lv:
+            hasil(False, "musik: score.json tanpa alas musik (%s); video tanpa musik dilarang (BIBLE A4)" % ", ".join(sorted(MUSIK)))
+        else:
+            b = batas_musik()
+            db = sorted(x for _, x in lv)
+            med = db[len(db) // 2]
+            rentang = db[9 * len(db) // 10] - db[len(db) // 10]
+            lubang = [t for t, x in lv if x < med - b["musik.lubang_db"]]
+            hasil(not lubang, "musik kontinu: %d jendela 0,5 s lebih dari %.0f dB di bawah median di luar hening%s"
+                  % (len(lubang), b["musik.lubang_db"], (" (akhir jendela: %s s)" % ", ".join("%.2f" % t for t in lubang[:12])) if lubang else ""))
+            hasil(rentang <= b["musik.rentang_level_maks_db"] + EPS, "musik rata: rentang level p10–p90 %.1f dB (batas %.0f)"
+                  % (rentang, b["musik.rentang_level_maks_db"]))
     else:
         print("info: score.json belum ada; sinkron hentakan belum dicek")
 
