@@ -21,8 +21,9 @@ const KARTU = 780, KARTU_KECIL = 560, KARTU_Y = ATAS + 310, RADIUS = 40;
 // blok teks kunci (≤ 2 baris) di antara label disclosure dan kartu; caption tepat di bawah kartu
 const KUNCI_Y = ATAS + 165, CAPTION_Y = KARTU_Y + KARTU + 22;
 
-export const META = { dur: isi.dur, kontras: isi.kontras };
-export const CUES = isi.kata.filter(k => k.sorot).map((k, i) => ({ id: 'sorot' + i, t: k.t0, kata: k.teks }));
+// loop: false — video produk tidak dirancang menyambung ke frame 0 (QA Slate melewati cek loop)
+export const META = { dur: isi.dur, kontras: isi.kontras, loop: false };
+export const CUES = isi.dorong.map((i, n) => ({ id: 'sorot' + n, t: isi.kata[i].t0, kata: isi.kata[i].teks }));
 
 // ---------------------------------------------------------------- easing
 
@@ -98,7 +99,8 @@ function kartu(ctx, b, t) {
   if (detail) skala *= Math.min(1.25, Math.min(im.width, im.height) / KARTU);
 
   let punch = 0;
-  for (const k of isi.kata) if (k.sorot && k.beat === isi.beats.indexOf(b)) punch = Math.max(punch, dorongan(t, k.t0));
+  const iB = isi.beats.indexOf(b);
+  for (const i of isi.dorong) if (isi.kata[i].beat === iB) punch = Math.max(punch, dorongan(t, isi.kata[i].t0));
   const ukuran = (b.foto_penuh ? KARTU : KARTU_KECIL) * (1 + (P['motion.punch_in_kata_kunci'] - 1) * punch);
   const x = (W - ukuran) / 2, y = KARTU_Y + (KARTU - ukuran) / 2;
 
