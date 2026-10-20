@@ -112,11 +112,18 @@ def cmd_video(folder, engine):
                 periksa.setdefault("%g" % v, []).append(round(t, 2))
             t += JARAK
     lolos = not gagal
-    hasil = {"lolos": lolos, "gagal": gagal, "periksa_angka": periksa, "frame": len(frames), "jarak_s": JARAK, "rinci": frames}
+    # CTA ke keranjang (doc 15 §2): peringatan, bukan GAGAL (video lama dengan VO "cek di link" tetap bisa disetujui)
+    peringatan = []
+    if not any("keranjang" in f["teks"].lower() for f in frames if f["t"] >= dur - 4.0):
+        peringatan.append("CTA: kata 'keranjang' tidak terbaca di 4 detik terakhir (Shopee Video: cek keranjang oranye)")
+    hasil = {"lolos": lolos, "gagal": gagal, "periksa_angka": periksa, "peringatan": peringatan, "frame": len(frames),
+             "jarak_s": JARAK, "rinci": frames}
     (folder / "qa_compliance.json").write_text(json.dumps(hasil, ensure_ascii=False, indent=1), encoding="utf-8")
     print("QA compliance: %s (%d frame, tiap %.2f s)" % ("LOLOS" if lolos else "GAGAL", len(frames), JARAK))
     for g in gagal:
         print("GAGAL: " + g)
+    for w in peringatan:
+        print("peringatan: " + w)
     for v, ts in periksa.items():
         print("PERIKSA angka %s di t=%s (tidak ada di data/naskah; jelaskan di cek_akhir.md atau buang)" % (v, ", ".join("%.2f" % x for x in ts[:6])))
     return 0 if lolos else 1

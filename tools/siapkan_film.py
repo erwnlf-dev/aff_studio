@@ -100,13 +100,77 @@ def kata_dari_vo(teks):
     return out
 
 
+PEMBUKA_TERLARANG = re.compile(r"\b(kenal(in|kan)|perkenalkan)\b", re.I)
+HOOK_TIPE = ("masalah", "hasil", "nilai", "demo", "angka")
+
+
+def template_naskah(naskah, params):
+    """Template yang dipakai naskah: naskah["template"] kalau template.variasi aktif (tanpa eksperimen), else bawaan."""
+    t = naskah.get("template") or params["template.default"]
+    if t != params["template.default"]:
+        boleh = params["template.variasi_pilihan"] if params["template.variasi"] else [params["template.default"]]
+        if t not in boleh:
+            raise NaskahError("template %r tidak boleh di sini; pilihan: %s" % (t, ", ".join(boleh)))
+    return t
+
+
+def cek_pasar(naskah, produk, params, saudara=()):
+    """Aturan pasar Indonesia (docs/15): CTA ke keranjang, tanpa 'Kenalin', hook pendek bertipe, struktur bervariasi.
+    Mengembalikan daftar pelanggaran (kosong = lolos)."""
+    salah = []
+    tempat = params["cta.tempat"]
+    kata_tempat = tempat.split()[0].lower()                 # "keranjang" / "link"
+    cta = [b for b in naskah["beats"] if b["tipe"] == "cta"]
+    teks_cta = " ".join([naskah.get("cta_layar") or ""] + [b["vo"].replace("*", "") for b in cta]).lower()
+    if kata_tempat not in teks_cta:
+        salah.append("CTA tidak mengarah ke %s (cta.tempat); contoh: \"cek %s ya\"" % (tempat, tempat))
+    if tempat != "link" and re.search(r"\b(link|bio)\b", teks_cta):
+        salah.append("CTA menyebut link/bio, padahal produk ditautkan lewat %s (doc 15 §2)" % tempat)
+    for i, b in enumerate(naskah["beats"]):
+        m = PEMBUKA_TERLARANG.search(b["vo"])
+        if m:
+            salah.append("beat %d (%s): %r = pengantar yang membuang detik (doc 15 §3); langsung ke produk/hasil" % (i, b["tipe"], m.group(0)))
+    hook = naskah["beats"][0]["vo"].replace("*", "")
+    kalimat1 = re.split(r"(?<=[.?!…])\s+", hook.strip())[0]
+    if len(kalimat1.split()) > params["hook.vo_kata_maks"]:
+        salah.append("hook %d kata, maks %d: %r" % (len(kalimat1.split()), params["hook.vo_kata_maks"], kalimat1))
+    ht = naskah.get("hook_tipe")
+    if ht not in HOOK_TIPE:
+        salah.append("hook_tipe %r; isi salah satu: %s" % (ht, ", ".join(HOOK_TIPE)))
+    elif ht == "masalah" and produk["kategori_diatur"]:
+        salah.append("hook_tipe masalah (pain) tidak boleh untuk kategori diatur (%s)" % produk["kategori"])
+    pola = (template_naskah(naskah, params), ht)
+    n = params["variasi.beda_dari_terakhir"]
+    sama = [nama for nama, pl in list(saudara)[:n] if pl == pola]
+    if sama:
+        salah.append("template + hook_tipe %s sama dengan %s (%d video terakhir paket ini); ganti salah satunya (konten "
+                     "repetitif tidak valid untuk level kreator Shopee, doc 15 §2)" % ("/".join(pola), ", ".join(sama), n))
+    return salah
+
+
+def saudara_dari(folder):
+    """[(id, (template, hook_tipe))] video lain di produksi/ yang sama, terbaru dulu (naskah.json berisi hook_tipe)."""
+    folder = Path(folder).resolve()
+    out = []
+    for f in folder.parent.glob("*/naskah.json"):
+        if f.parent == folder or not f.parent.name.isdigit():
+            continue
+        try:
+            n = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if n.get("hook_tipe"):
+            out.append((f.stat().st_mtime, f.parent.name, (n.get("template") or "masalah_solusi", n["hook_tipe"])))
+    return [(nama, pola) for _, nama, pola in sorted(out, reverse=True)]
+
+
 def cek_naskah(naskah, produk, params):
-    urutan = params["template.%s.urutan" % params["template.default"]]
+    urutan = params["template.%s.urutan" % template_naskah(naskah, params)]
     pakai_harga = params["harga.mode"] != "tanpa_angka" and produk["harga_boleh_tampil"]
     harap = [b for b in urutan if b != "harga" or pakai_harga]
     tipe = [b.get("tipe") for b in naskah.get("beats") or []]
     if tipe != harap:
-        raise NaskahError("urutan beat %s, template %s mengharapkan %s" % (tipe, params["template.default"], harap))
+        raise NaskahError("urutan beat %s, template %s mengharapkan %s" % (tipe, template_naskah(naskah, params), harap))
     if naskah.get("product_id") != produk["id"]:
         raise NaskahError("product_id naskah %r ≠ produk %r" % (naskah.get("product_id"), produk["id"]))
     hook = (naskah.get("hook_layar") or "").split()
@@ -255,9 +319,17 @@ def kode_foto(paths, params):
 
 # ---------------------------------------------------------------- susun
 
-def susun(produk, naskah, snapshot, vo=None):
+def susun(produk, naskah, snapshot, vo=None, saudara=(), peringatan=None):
+    """`saudara`: saudara_dari(folder kerja). Aturan pasar (cek_pasar) GAGAL untuk naskah baru; kalau voiceover sudah
+    ada (run ulang yang memakai VO lama), pelanggarannya hanya ditambahkan ke `peringatan`, karena kata-kata VO tidak
+    bisa diubah tanpa VO baru."""
     params = snapshot["params"]
     cek_naskah(naskah, produk, params)
+    salah = cek_pasar(naskah, produk, params, saudara)
+    if salah and not vo:
+        raise NaskahError("; ".join(salah))
+    if peringatan is not None:
+        peringatan.extend(salah)
     beats_kata = [kata_dari_vo(b["vo"]) for b in naskah["beats"]]
     timing, akhir_vo = timing_vo(beats_kata, vo) if vo else perkiraan_timing(beats_kata, params)
 
@@ -302,6 +374,7 @@ def susun(produk, naskah, snapshot, vo=None):
     caption = kelompok_caption(kata, batas, params)
     isi = {
         "versi": 1, "variant_id": snapshot["variant_id"], "eksperimen": snapshot["eksperimen"],
+        "template": template_naskah(naskah, params), "hook_tipe": naskah.get("hook_tipe"), "cta_tempat": params["cta.tempat"],
         "produk_id": produk["id"], "dur": dur, "timing": "vo" if vo else "perkiraan",
         "palet": pal, "kontras": pasangan, "disclosure": params["disclosure.teks"],
         "beats": beats, "kata": kata, "caption": caption,
@@ -339,7 +412,10 @@ def main(argv=None):
         if produk is None:
             raise NaskahError("produk %r tidak ada di paket atau ditolak validator" % naskah.get("product_id"))
         vo = json.loads(Path(a.vo).read_text(encoding="utf-8")) if a.vo else None
-        isi, foto, txt, scenes, ringkas = susun(produk, naskah, snap, vo)
+        peringatan = []
+        isi, foto, txt, scenes, ringkas = susun(produk, naskah, snap, vo, saudara_dari(a.keluar), peringatan)
+        for w in peringatan:
+            print("peringatan (VO lama, tidak bisa diubah tanpa VO baru): " + w, file=sys.stderr)
     except (NaskahError, paket.PaketError, ValueError, OSError) as e:
         print("ditolak: %s" % e, file=sys.stderr)
         return 2

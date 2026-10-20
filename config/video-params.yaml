@@ -39,6 +39,7 @@ sumber:
   R-SHOPEE-VIDEO: "Pusat Bantuan Shopee (label AI wajib untuk narasi AI, klaim harga, pelanggaran, tag produk, keranjang kiri bawah); doc 14"
   R-PLAYHEAD: "Playhead, 19 video viral TikTok Shop (Mei–Sep 2026): produk terlihat median 0,07 s, bukti median 2,73 s, tanpa wajah median 13,5 s (tryplayhead.com/blog/tiktok-shop-hooks; doc 13 §4)"
   VM-PLATFORMS: "/data/apps/video-maker/config/platforms.json: zona aman px per platform (belum diverifikasi ke platform; doc 13 §5)"
+  R-PASAR-ID: "Riset pasar Indonesia 20 Okt 2026 (docs/15-riset-pasar-id.md): Shopee Video keranjang oranye kiri bawah, larangan tautan keluar aplikasi, konten repetitif tidak valid untuk level kreator, praktisi ID (hook masalah/nilai/hasil <= 8 kata, tanpa salam/pengantar)"
   PEMILIK-MUSIK: "Catatan pemilik di konsol 20 Okt 2026 17:10 (Ulangi aff002-kipas): 'musik backsound nya hilang muncul hilang muncul jadi kurang enak ditonton'. Ukuran score.json keempat video pertama: rentang level musik p10-p90 27-105 dB, 10-21 jendela 0,5 s tanpa musik di luar hening (level per bagian x0,1-2,3 demi LRA + not musik dihapus di sekitar hentakan)"
   DATA-2026-10-19: "Paket data pemilik affiliate_pipeline_data_2026-10-19.zip (9 produk shortlist); temuan di docs/TODO.md §3"
 
@@ -116,6 +117,25 @@ parameter:
     alasan: "Satu template di MVP supaya hasil awal bisa dibandingkan. Pilih otomatis per kategori adalah usulan (template.pilih_per_kategori); perbandingan menunggu ADR-P03."
     sumber: [H03]
     eksperimen: EXP-03
+  template.variasi:
+    status: default
+    nilai: true
+    pilihan: [true, false]
+    alasan: "Kreator memilih template per video (naskah.json 'template') supaya video dalam satu akun tidak berstruktur identik; Shopee menilai video repetitif (gaya, caption, produk serupa) tidak valid untuk level kreator. Saat eksperimen template berjalan, matikan (lengan menentukan template)."
+    sumber: [R-PASAR-ID]
+  template.variasi_pilihan:
+    status: default
+    nilai: [masalah_solusi, fitur_cepat]
+    pilihan: [masalah_solusi, fitur_cepat, price_reveal]
+    alasan: "price_reveal hanya sah dengan harga.mode = angka_bertanggal, jadi tidak ikut variasi bawaan."
+    sumber: [R-PASAR-ID]
+  variasi.beda_dari_terakhir:
+    status: default
+    nilai: 2
+    rentang: [0, 5]
+    satuan: video terakhir di paket yang sama
+    alasan: "Pasangan template + hook_tipe tidak boleh sama dengan N video terakhir. Empat video pertama berpola identik (pertanyaan → masalah → 'Kenalin…' → 2 fitur → cap → 'cek di link')."
+    sumber: [R-PASAR-ID]
   template.pilih_per_kategori:
     status: usulan
     nilai: false
@@ -294,6 +314,13 @@ parameter:
     satuan: detik
     alasan: "Baru Tau BASELINE 2: ada aksi pertama dalam 0,5 s. Frame 0 yang diam terbaca sebagai video macet."
     sumber: [BT-BASELINE]
+  hook.vo_kata_maks:
+    status: default
+    nilai: 8
+    rentang: [5, 12]
+    satuan: kata di kalimat pertama hook
+    alasan: "Praktisi ID: hook sekitar 8 kata, langsung masalah konkret, nilai, atau hasil; tanpa salam atau pengantar. Ditambah naskah.json 'hook_tipe' (masalah/hasil/nilai/demo/angka) supaya tipenya bisa divariasikan dan diukur."
+    sumber: [R-PASAR-ID]
   hook.kandidat_dibuat:
     status: default
     nilai: 3
@@ -630,6 +657,12 @@ parameter:
     satuan: detik
     alasan: "CTA dibaca paling lambat; ≈ 5 kata × 0,3 s baca + 0,7 s."
     sumber: [BT-BIBLE, BT-AUDIT]
+  cta.tempat:
+    status: default
+    nilai: keranjang oranye
+    pilihan: [keranjang oranye, keranjang kuning, link]
+    alasan: "Shopee Video: produk ditautkan lewat Tambah Produk dan tampil di keranjang oranye kiri bawah; pedoman Shopee Video melarang tautan keluar aplikasi, jadi 'cek di link' salah tempat. TikTok Shop: keranjang kuning. 'link' hanya untuk Threads/link di bio. CTA diucapkan dan ditulis, ditambah panahKeranjang di layar."
+    sumber: [R-SHOPEE-VIDEO, R-PASAR-ID]
   cta.posisi:
     status: default
     nilai: akhir

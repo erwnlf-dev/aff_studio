@@ -68,12 +68,14 @@ Data (doc 13 §4): produk terlihat di median 0,07 detik, dan manfaat/bukti di me
 
 | Bagian | Detik (bawaan 20 s) | Isi | Visual |
 |---|---|---|---|
-| Hook | 0–2,5 | Produk + pertanyaan/kejanggalan; demonstrasi terkuat sudah mulai sebelum detik 3 | Frame 0 = thumbnail utuh: produk cutout + teks hook ≤ 5 kata + yang menarik disorot; aksi pertama ≤ 0,5 detik |
+| Hook | 0–2,5 | Produk + masalah konkret, hasil, atau nilai (≤ 8 kata terucap, `hook_tipe`); demonstrasi terkuat sudah mulai sebelum detik 3 | Frame 0 = thumbnail utuh: produk cutout + teks hook ≤ 5 kata + yang menarik disorot; aksi pertama ≤ 0,5 detik |
 | Masalah | 2,5–5 | Situasi yang dikenal (lantai basah, bibir kering, gerah di KRL) | Adegan digambar dengan tangan/karakter yang berakting; detail lokal |
 | Fitur ① | 5–10 | Fitur utama dari `key_features`, didemonstrasikan | Demonstrasi **digambar**: tetes air mengecil masuk ke keset, garis angin + rambut tertiup, olesan warna pada bibir kartun |
 | Fitur ② | 10–14 | Fitur kedua | Komposisi dan warna berbeda dari ① |
 | Bukti | 14–17 | Rating/terjual persis dari data | Dicap tangan (cap karet "★ 4,9", "10RB+ terjual/bulan") seperti cap Baru Tau |
-| CTA | 17–20 | Ajakan ke tempat link | End card: produk cutout, CTA, disclosure; dibaca paling lambat |
+| CTA | 17–20 | Ajakan ke keranjang (`cta.tempat`; Shopee Video: keranjang oranye), bukan "link" | End card: produk cutout, CTA, `panahKeranjang` ke kiri bawah, disclosure; dibaca paling lambat |
+
+**Variasi (doc 15).** Tabel di atas adalah template `masalah_solusi`. Video dalam satu akun tidak boleh berstruktur identik: pilih `template` (`masalah_solusi`/`fitur_cepat`) dan `hook_tipe` yang berbeda dari 2 video terakhir, dan jangan membuka produk dengan "Kenalin…".
 
 **Hening dan payoff.** Satu hening sungguhan (≥ 0,4 detik, di dalam jeda VO) tepat sebelum produk masuk atau sebelum demonstrasi fitur terkuat; bunyi pertama sesudahnya adalah hentakan produk. Momen yang paling layak ditonton ulang ditempatkan sebelum 75% durasi.
 
