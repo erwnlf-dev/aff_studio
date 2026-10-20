@@ -379,6 +379,13 @@ parameter:
     satuan: px dari bawah
     alasan: "Baru Tau: caption di atas y = 1480 → 440 px dari bawah."
     sumber: [BT-BASELINE]
+  zona_aman.shopee_video.bawah_px:
+    status: default
+    nilai: 480
+    rentang: [300, 640]
+    satuan: px dari bawah
+    alasan: "Platform fase 1. BELUM DIUKUR: sementara memakai angka TikTok (tombol produk dan caption di bawah). Ganti setelah screenshot UI Shopee Video (TODO §5)."
+    sumber: [TEKNIS]
   zona_aman.atas_px:
     status: default
     nilai: 160
@@ -614,6 +621,13 @@ parameter:
     pilihan: [label_persisten, label_persisten_dan_vo_akhir]
     alasan: "Label kecil ('Link afiliasi') sepanjang video + label di teks post/toggle platform. Persisten berarti terlihat sejak frame 0 tanpa bergantung penonton sampai akhir."
     sumber: [R-TIKTOK-SHOP, H12]
+  disclosure.teks:
+    status: default
+    kunci: compliance
+    nilai: "Link afiliasi"
+    pilihan: ["Link afiliasi", "Mengandung link afiliasi"]
+    alasan: "Kata-kata label persisten. Pendek supaya muat di pojok tanpa menutup produk; tetap jelas maknanya dalam bahasa Indonesia."
+    sumber: [R-TIKTOK-SHOP]
   disclosure.font_px:
     status: default
     kunci: compliance
@@ -622,6 +636,14 @@ parameter:
     satuan: px
     alasan: "Cukup terbaca di HP (Baru Tau: < 30 px hanya dekorasi), cukup kecil supaya tidak menutup produk."
     sumber: [BT-BASELINE]
+
+  compliance.kategori_diatur:
+    status: default
+    kunci: compliance
+    nilai: ["Perawatan & Kecantikan", "Makanan & Minuman", "Kesehatan", "Ibu & Bayi"]
+    pilihan: ["Perawatan & Kecantikan", "Makanan & Minuman", "Kesehatan", "Ibu & Bayi"]
+    alasan: "Awalan kategori Shopee yang klaim manfaatnya diatur (kosmetik, pangan, kesehatan). Produk di sini tidak boleh memakai hook pain, dan klaimnya hanya dari key_features penjual apa adanya. Menambah kategori boleh; menghapus butuh ADR."
+    sumber: [DATA-2026-10-19]
 
   # ---------------------------------------------------------------- varian dan foto
   varian.per_produk:
@@ -664,16 +686,24 @@ parameter:
     sumber: [TEKNIS]
   foto.embed_sisi_panjang_px:
     status: default
-    nilai: 1080
-    rentang: [800, 1440]
+    nilai: 1024
+    rentang: [720, 1440]
     satuan: px
-    alasan: "Slate render_film hanya menerima file teks (maks 2 MB per file, 8 MB total), jadi foto masuk sebagai base64 di foto.json. 1080 px cukup untuk layar penuh dengan zoom ≤ 1,15 (kanvas 1080 lebar)."
+    alasan: "Slate render_film hanya menerima file teks (.js/.json/…, maks 2 MB TOTAL untuk semua file film, renderer.prepare_workspace), jadi foto masuk sebagai base64 di foto.json. Foto Shopee aslinya 1.024 px; kartu produk 880 px × zoom 1,15 ≈ 1.012 px, jadi tidak perlu lebih besar."
     sumber: [BT-SLATE, TEKNIS]
+  foto.embed_total_maks_kb:
+    status: default
+    kunci: qa
+    nilai: 1800
+    rentang: [500, 1900]
+    satuan: KB (setelah base64)
+    alasan: "Batas renderer Slate 2.000.000 byte untuk semua file film; sisakan ~200 KB untuk film.js dan isi.json. Kualitas JPEG diturunkan otomatis (sampai 60) kalau foto tidak muat."
+    sumber: [BT-SLATE]
   foto.embed_jpeg_kualitas:
     status: default
     nilai: 80
     rentang: [70, 92]
-    alasan: "≈ 150–250 KB per foto; 6 foto ≈ 1,5 MB setelah base64 (+33%). Di atas 90 ukuran naik tanpa beda terlihat setelah platform encode ulang."
+    alasan: "Kualitas awal; diturunkan otomatis kalau total melewati foto.embed_total_maks_kb. Di atas 90 ukuran naik tanpa beda terlihat setelah platform encode ulang."
     sumber: [BT-SLATE, TEKNIS]
   foto.mode_foto_persegi:
     status: eksperimen
