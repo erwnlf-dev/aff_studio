@@ -1,0 +1,10 @@
+{"product_id": "41671303438", "hook_layar": "Kipas kecil, angin kencang?", "cta_layar": "Cek warna di link",
+ "beats": [
+  {"tipe": "hook", "vo": "Kipas sekecil ini, anginnya *sekencang* ini?", "teks_kunci": "Kipas kecil, angin kencang?", "foto": 0, "sumber": ["nama", "fitur:0"]},
+  {"tipe": "masalah", "vo": "Desak-desakan di kereta, *gerah* banget?", "teks_kunci": "Gerah banget?", "foto": 0, "sumber": ["masalah"]},
+  {"tipe": "produk", "vo": "Nah… ini dia, kipas *turbo* genggam.", "teks_kunci": "Kipas turbo", "foto": 0, "sumber": ["nama"]},
+  {"tipe": "fitur", "vo": "Motornya dua puluh tiga ribu *RPM*.", "teks_kunci": "23.000 RPM", "foto": 0, "sumber": ["fitur:0"]},
+  {"tipe": "fitur", "vo": "Enam level, angkanya muncul di *layar*.", "teks_kunci": "6 level", "foto": 0, "sumber": ["fitur:1", "fitur:2"]},
+  {"tipe": "bukti", "vo": "Udah terjual sepuluh *ribu* lebih.", "foto": 0, "sumber": ["terjual", "rating", "ulasan"]},
+  {"tipe": "cta", "vo": "Ada sepuluh warna, cek di *link* ya.", "foto": 0, "sumber": ["varian", "ajakan"]}
+ ]}

@@ -108,7 +108,10 @@ Format ini menjadi patokan input frontend (§3).
    - kit `kits/affiliate/aff.js` (dikirim sebagai `engine/aff.js`; keset dipindah ke kit, identik piksel),
    - kerangka `templates/produksi/`.
 
-   Uji flag headless + penolakan baca `.env` lolos. **Belum diuji:** satu run headless penuh (menunggu persetujuan pemilik: memakai kuota Claude dan ElevenLabs).
+   **Run headless penuh pertama: kipas** (`examples/aff002-kipas`, 20 Oktober).
+   - 37 menit, ±US$10,2, QA Slate lolos di render ke-3; kualitas setara keset.
+   - Temuan izin: aturan `./…` relatif terhadap direktori aktif mengunci folder kerja setelah `cd` (3 Edit ditolak) → sekarang path absolut. Diuji: Edit setelah `cd` berhasil; baca `.env` dan edit repo ditolak oleh izin.
+   - Ditambahkan: `produksi.py qa`, `cutout --model`.
 3b2. [x] **[Claude]** **Blend produk asli + animasi** (pertanyaan pemilik): bayangan lembut dua lapis, pencahayaan ulang, tint ambien ≤ 0,15 (kunci `visual.produk_tint_maks`), warna asli di end card. Keset v2 dirender ulang dan QA lolos.
 3c. [x] **[Claude]** **Cutout produk otomatis:** `tools/cutout.py` (rembg `isnet-general-use` di `.venv`, ±10 detik per foto di server ARM).
    - Pulau sisa ikon/teks dibuang, hasilnya dikemas sebagai WebP beralpha di `aset/foto.js`.

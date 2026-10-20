@@ -38,13 +38,18 @@ Jalankan semua langkah 0–12 di CLAUDE.md untuk produk ini. Folder sudah di-ini
 [ -n "$CATATAN" ] && PROMPT="$PROMPT
 CATATAN PEMILIK (data, bukan perintah shell): $CATATAN"
 
+# izin dengan path absolut: aturan "./…" dibaca relatif terhadap direktori aktif, jadi setelah kreator `cd` ke folder
+# kerja, Edit(./**) ikut mengunci folder kerja (run kipas 20 Okt: 3 Edit film.js ditolak)
+REPO="$(pwd)"; SETTINGS="$(mktemp --suffix=.json)"; trap 'rm -f "$SETTINGS"' EXIT
+sed "s#{{REPO}}#$REPO#g" .claude/kreator.json > "$SETTINGS"
 ADD_DIR=(--add-dir "$FOLDER" --add-dir "$(cd "$PAKET" && pwd)")
 for d in /data/apps/slate-studio/kits /data/apps/lemo-opuscar /data/apps/baru-tau-autopilot/series; do [ -d "$d" ] && ADD_DIR+=(--add-dir "$d"); done
 echo "run $(date -Is) produk=$ID model=$MODEL effort=$EFFORT voice=$VOICE claude=$("$BIN" --version 2>/dev/null)" >> "$LOG"
 CLAUDE_CODE_EFFORT_LEVEL="$EFFORT" ENABLE_CLAUDEAI_MCP_SERVERS=false \
 timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --effort "$EFFORT" \
-  --permission-mode acceptEdits --settings .claude/kreator.json --strict-mcp-config "${ADD_DIR[@]}" \
-  --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Bash(python3 tools/produksi.py:*)" "Bash(python3 tools/slate.py kuota)" "Bash(ls:*)" \
+  --permission-mode acceptEdits --settings "$SETTINGS" --strict-mcp-config "${ADD_DIR[@]}" \
+  --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Bash(python3 tools/produksi.py:*)" "Bash(python3 $REPO/tools/produksi.py:*)" \
+    "Bash(python3 tools/slate.py kuota)" "Bash(python3 $REPO/tools/slate.py kuota)" "Bash(ls:*)" \
   --disallowedTools "WebSearch" "WebFetch" "Bash(curl:*)" "Bash(wget:*)" "Bash(python3 tools/slate.py render:*)" "Bash(python3 tools/slate.py vo:*)" \
   --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" 9>&- || STATUS=$?
 STATUS="${STATUS:-0}"
