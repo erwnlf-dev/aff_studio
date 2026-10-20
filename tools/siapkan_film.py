@@ -299,11 +299,14 @@ def susun(produk, naskah, snapshot, vo=None):
     if gagal:
         raise NaskahError("kontras di bawah %s: %s" % (params["teks.kontras_min"], gagal))
 
+    caption = kelompok_caption(kata, batas, params)
     isi = {
         "versi": 1, "variant_id": snapshot["variant_id"], "eksperimen": snapshot["eksperimen"],
         "produk_id": produk["id"], "dur": dur, "timing": "vo" if vo else "perkiraan",
         "palet": pal, "kontras": pasangan, "disclosure": params["disclosure.teks"],
-        "beats": beats, "kata": kata, "caption": kelompok_caption(kata, batas, params),
+        "beats": beats, "kata": kata, "caption": caption,
+        # punch-in dan CUES hanya di kata yang benar-benar disorot caption (maks caption.kata_disorot_per_layar)
+        "dorong": sorted(i for g in caption for i in g["sorot"]),
         "params": params,
     }
     naskah_txt = " ".join(b["vo"].replace("*", "") for b in naskah["beats"])

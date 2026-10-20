@@ -67,7 +67,9 @@ Format ini menjadi patokan input frontend (§3).
    - QA compliance membaca teks foto dengan OCR (butir 12),
    - foto yang bertentangan ditandai, misalnya `foto.tolak`, di kartu naskah tahap 1.
 8. **Angka di caption masih ditulis dengan huruf** ("dua puluh tiga ribu"), karena caption = teks VO. Generator naskah perlu menulis dua versi per kalimat: `vo` (angka dengan huruf, untuk TTS) dan `layar` (digit, untuk caption), seperti aturan Baru Tau.
-9. **Repo ini publik.** Paket data mentah tidak di-commit: ada email pemilik di `CONTEXT.md`, link affiliate, dan data toko. Tes memakai fixture yang sudah disamarkan.
+9. **Server Slate belum punya suara bawaan** (`ELEVENLABS_VOICE_ID` kosong). Uji pertama memakai suara "Erwin" (`p1y62Xa1WwNReXz59xPE`), sama dengan Baru Tau; suara itu berlabel bahasa Inggris. Pilihan suara affiliate menunggu keputusan pemilik (EXP-04, §4).
+10. **Tandai satu kata per sorotan di naskah** (`*kering*`, bukan `*ada warnanya*`). Caption hanya menyorot `caption.kata_disorot_per_layar` (1) kata, jadi kata lain dalam tanda bintang tidak tampil berwarna.
+11. **Repo ini publik.** Paket data mentah tidak di-commit: ada email pemilik di `CONTEXT.md`, link affiliate, dan data toko. Tes memakai fixture yang sudah disamarkan.
 
 ## 4. Keputusan pemilik (yang lain menunggu ini)
 
@@ -93,18 +95,29 @@ Format ini menjadi patokan input frontend (§3).
 1. [x] **[Claude]** **Loader + validator paket data:** `tools/paket.py` (folder atau zip, produk ditolak/peringatan, `kategori_diatur`, angka di `video_angle` yang tidak ada di `key_features`, umur harga). Paket 2026-10-19: 9/9 siap. Tes dengan fixture yang disamarkan (`tests/fixture.py`).
 2. [x] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret`, `compliance.kategori_diatur`, `disclosure.teks` (dikunci), `foto.embed_total_maks_kb`. Zona aman Shopee Video masih angka sementara (480 px) sampai diukur.
 3. [ ] **[Claude]** **Generator naskah:** satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
-4. [~] **[Claude]** **Template `film.js`** (ADR-P05). Prototipe `templates/kartu/film.js` sudah ada:
-   - kartu foto di atas latar warna dari foto cover, Ken Burns ke titik fokus, crop detail di beat panjang, punch-in di kata disorot,
+4. [~] **[Claude]** **Template `film.js`** (ADR-P05). Prototipe `templates/kartu/film.js`:
+   - kartu foto di atas latar warna dari foto cover, Ken Burns ke titik fokus, crop detail di beat panjang, punch-in di kata yang disorot caption,
    - teks kunci per beat, chip bukti dari data feed, caption per frasa dari timing kata, label disclosure persisten.
 
-   Bahan disusun `tools/siapkan_film.py` (`isi.json` + `foto.json` + `naskah.txt` + `scenes.json`), dan dipratinjau lokal dengan `tools/pratinjau.py` (Chromium headless, tanpa Slate). Sudah dicoba dengan naskah contoh untuk Hanasui, Keset, dan Kipas (`/data/apps/affiliate-data/2026-10-19/naskah/`, di luar repo): durasi 19–22 detik, 257–292 karakter VO.
+   Bahan disusun `tools/siapkan_film.py` dan dipratinjau lokal dengan `tools/pratinjau.py`. Naskah contoh untuk Hanasui, Keset, dan Kipas ada di `/data/apps/affiliate-data/2026-10-19/naskah/` (di luar repo).
+
+   **Render penuh pertama (20 Oktober), Hanasui:**
+   - job `2026-10-20-dfe4ae`, **QA Slate lolos**,
+   - 20,17 detik, 30 fps, −14,0 LUFS, tanpa frame beku, frame hitam, atau kedip berbahaya,
+   - kontras 12,9–21:1,
+   - VO 292 karakter / 19,34 detik, render 605 frame dalam sekitar 95 detik,
+   - `final.mp4` di `/data/apps/affiliate-data/2026-10-19/film/28776875950/`.
 
    **Belum:**
-   - render penuh lewat Slate + `qa_video`,
-   - penilaian BASELINE di HP,
-   - transisi selain potong keras,
-   - loop ke frame 0.
-5. [ ] **[Claude]** **Integrasi Slate:** `buat_voiceover`, `pratinjau_film`, `render_film`, `qa_video` lewat helper seperti `baru-tau-autopilot/tools/slate.py`, dengan foto sebagai base64 JSON. Batas renderer Slate 2 MB **total** untuk semua file film (bukan 8 MB seperti helper Baru Tau).
+   - musik (lihat 4b),
+   - penilaian di HP oleh pemilik,
+   - transisi selain potong keras.
+4b. [ ] **[Claude]** **Musik:** partitur per mood dengan `slate_score.py`. Tanpa musik, QA memberi peringatan LRA 1,3 LU (mix datar). `musik.ada = true` adalah kontrol EXP-08.
+5. [x] **[Claude]** **Integrasi Slate:** `tools/slate.py` (`kuota`, `vo`, `render`, `tunggu`, `qa`, `pratinjau`).
+   - URL MCP dibaca dari `.env` dan tidak pernah tercetak.
+   - Tool posting dan Telegram ditolak.
+   - `vo` menolak membuat ulang kalau `vo.json` sudah ada.
+   - `render` menolak timing perkiraan dan file > 2 MB.
 6. [ ] **[Claude]** **QA compliance:**
    - setiap kalimat naskah punya sumber,
    - angka di layar ⊂ data produk,
