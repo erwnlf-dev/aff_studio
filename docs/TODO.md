@@ -31,14 +31,17 @@ Format ini menjadi patokan input frontend (§3).
 
 ## 3. Temuan dari paket data 2026-10-19
 
-1. **Gambar tidak ada di zip.** Semua folder `products/<id>/images/` kosong. Ke-71 gambar ada di folder Download Chromium (`/data/storage/chrome-webgui/Downloads`), yang tidak bisa dibaca user `ubuntu` (permission denied).
+1. **Gambar tidak ada di zip.** Semua folder `products/<id>/images/` kosong. Sudah diatasi 20 Oktober: 71 gambar diunduh ulang dengan `fetch_images_zip.py` ke `/data/apps/affiliate-data/2026-10-19/products/<id>/images/`, ditambah `affiliate_assets_2026-10-20.zip` (28,6 MB). Semuanya JPEG yang valid.
+   - Sisi pendek 1.024 px untuk hampir semua foto.
+   - Satu foto Omura 512 px dan satu foto pupuk 616 px. Keduanya di bawah `foto.sisi_pendek_min_px` (800), jadi hanya boleh tampil sebagai kartu kecil.
+   - Omura hanya punya 3 foto, kurang untuk 8 beat. Foto dipakai ulang dengan crop berbeda, atau pakai video penjual (ADR-P01, lisensi).
 2. **Field yang sudah memenuhi ADR-P01:**
    - `scraped_at` (= waktu harga diambil),
    - `sold_30d` sebagai teks tampilan ("10RB+"),
    - `reviews` (= jumlah rating),
    - `category`,
-   - `transparent_bg` (foto tanpa latar, cocok untuk kartu produk di atas latar warna),
-   - `has_video`.
+   - `has_video`,
+   - `transparent_bg`, tapi **bukan foto transparan**: JPEG RGB tanpa kanal alpha. 5 dari 9 produk `null`; dari 4 yang terisi, 3 sudah ada di daftar `images` dan 1 (Hanasui) gambar terpisah yang ikut diunduh (`<id>_tbg.jpg`). Kartu produk di atas latar warna butuh penghapus latar (mis. `rembg`, CPU) atau memakai foto utuh sebagai kartu.
 
    **Field yang belum ada:**
    - penanda harga promo/flash sale,
@@ -57,11 +60,9 @@ Format ini menjadi patokan input frontend (§3).
 
 ## 4. Keputusan pemilik (yang lain menunggu ini)
 
-- [ ] **[pemilik]** Gambar: pilih salah satu.
-  - Salin ke `/data/apps/affiliate-data/<tanggal>/products/<id>/images/`.
-  - Atau izinkan `fetch_images_zip.py` (dari paket data) mengunduh ulang dari CDN Shopee ke server: 71 file, jeda 1,5–3,5 detik.
-  - Ke depan: zip sebaiknya sudah berisi gambar.
-- [ ] **[pemilik]** Lokasi paket data di server: usulan `/data/apps/affiliate-data/<tanggal>/` (di luar repo).
+- [x] **[pemilik]** Gambar 2026-10-19: diunduh ulang dengan `fetch_images_zip.py` (disetujui pemilik 20 Oktober).
+- [ ] **[pemilik]** Paket berikutnya: sertakan gambar di zip, atau jalankan `fetch_images_zip.py` sebagai langkah tetap. Folder Download Chromium (`/data/storage/chrome-webgui/Downloads`, milik `opc`, mode 700) belum terbaca user `ubuntu`. Kalau mau dipakai langsung, beri izin baca grup/ACL, misalnya `setfacl -R -m u:ubuntu:rX`; Claude tidak mengubah izin folder profil browser tanpa diminta.
+- [x] **[pemilik]** Lokasi paket data di server: `/data/apps/affiliate-data/<tanggal>/` (di luar repo; repo publik).
 - [ ] **[pemilik]** ADR-P05: template `film.js` berbasis snapshot, bukan sesi Opus per video.
 - [ ] **[pemilik]** ADR-P02: persetujuan naskah + frame 0 sebelum VO, dan persetujuan batch.
 - [ ] **[pemilik]** ADR-P01: tambahan field penanda promo, lisensi media, `business_note` (lihat §3 butir 2 dan 4).
