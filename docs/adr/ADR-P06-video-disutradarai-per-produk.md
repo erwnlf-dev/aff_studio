@@ -1,6 +1,6 @@
 # ADR-P06: Video disutradarai per produk (metode Baru Tau), bukan template
 
-- **Status:** Proposed (20 Oktober 2026). Menggantikan ADR-P05. Nomor final mengikuti urutan ADR proyek.
+- **Status:** Diterima pemilik (20 Oktober 2026: "setuju semua, yang penting kualitas di atas orang kebanyakan bikin video"). Menggantikan ADR-P05. Video pertama: `examples/aff001-keset`.
 - **Menyentuh:** stack (cara film dibuat), biaya dan kadens produksi.
 - **Dirujuk dari:** `series/BIBLE.md`, `series/BASELINE.md`, `docs/13-acuan-kualitas-video.md`.
 

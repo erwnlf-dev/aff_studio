@@ -1,0 +1,10 @@
+{"product_id": "55566811995", "hook_layar": "Keset ini nyerap air?", "cta_layar": "Cek motif di link",
+ "beats": [
+  {"tipe": "hook", "vo": "Keset kucing ini, *nyerap* air?", "foto": 5, "sumber": ["fitur:0"]},
+  {"tipe": "masalah", "vo": "Habis mandi, lantai basah dan *licin*?", "teks_kunci": "Lantai licin?", "foto": 5, "sumber": ["masalah"]},
+  {"tipe": "produk", "vo": "Kenalin… keset *diatomite* motif kucing.", "teks_kunci": "Keset diatomite", "foto": 5, "sumber": ["nama", "fitur:3"]},
+  {"tipe": "fitur", "vo": "Daya serapnya tinggi, lantai tetap *kering*.", "teks_kunci": "Cepat kering", "foto": 5, "sumber": ["fitur:0", "fitur:1"]},
+  {"tipe": "fitur", "vo": "Alasnya *anti-slip*, nggak gampang geser.", "teks_kunci": "Anti-slip", "foto": 3, "sumber": ["fitur:2"]},
+  {"tipe": "bukti", "vo": "Sebulan terjual sepuluh *ribu* lebih.", "foto": 5, "sumber": ["terjual", "rating"]},
+  {"tipe": "cta", "vo": "Motifnya banyak, cek di *link* ya.", "foto": 0, "sumber": ["varian", "ajakan"]}
+ ]}

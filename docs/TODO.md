@@ -73,7 +73,7 @@ Format ini menjadi patokan input frontend (§3).
 
 ## 4. Keputusan pemilik (yang lain menunggu ini)
 
-- [ ] **[pemilik]** **ADR-P06: video disutradarai per produk dengan metode Baru Tau** (menggantikan template, ADR-P05). Uji template `kartu` 20 Oktober dinilai jelek. Standar baru: `series/BIBLE.md`, `series/BASELINE.md`, acuan `docs/13-acuan-kualitas-video.md`. Konsekuensi:
+- [x] **[pemilik]** **ADR-P06: video disutradarai per produk dengan metode Baru Tau** (diterima 20 Oktober) (menggantikan template, ADR-P05). Uji template `kartu` 20 Oktober dinilai jelek. Standar baru: `series/BIBLE.md`, `series/BASELINE.md`, acuan `docs/13-acuan-kualitas-video.md`. Konsekuensi:
   - satu sesi kreator Opus per video,
   - realistis 1–3 video per hari,
   - angka volume dan eksperimen di doc 12 perlu dihitung ulang.
@@ -100,13 +100,30 @@ Format ini menjadi patokan input frontend (§3).
 1. [x] **[Claude]** **Loader + validator paket data:** `tools/paket.py` (folder atau zip, produk ditolak/peringatan, `kategori_diatur`, angka di `video_angle` yang tidak ada di `key_features`, umur harga). Paket 2026-10-19: 9/9 siap. Tes dengan fixture yang disamarkan (`tests/fixture.py`).
 2. [x] **[Claude]** **Parameter baru dari temuan §3:** `harga.tampilkan_harga_coret`, `compliance.kategori_diatur`, `disclosure.teks` (dikunci), `foto.embed_total_maks_kb`. Zona aman Shopee Video masih angka sementara (480 px) sampai diukur.
 3. [ ] **[Claude]** **Generator naskah:** satu panggilan LLM terstruktur per produk dari snapshot + data produk. Keluarannya: naskah per beat, 3 hook, pilihan foto per beat, teks post, dan **sumber setiap klaim** (`key_features[i]`, deskripsi, atau angka feed).
-3b. [ ] **[Claude]** **Pipeline kreator per video (ADR-P06)**, mencontek Baru Tau:
-   - `CLAUDE.md` aff_studio untuk Mode PRODUKSI affiliate,
-   - salinan `audit_film.py` dan pola ledger,
-   - `slate_score.py` untuk partitur,
-   - kit kecil `kits/affiliate/aff.js` (disclosure, slab caption, cutout + bayangan kontak, cap bukti, end card).
-3c. [ ] **[Claude]** **Cutout produk otomatis:** rembg `isnet-general-use` (+ ViTMatte untuk tepi terbaik), di CPU sekitar 0,3–1,7 detik per foto (doc 13 §6), plus deteksi teks foto. Butuh `pip install rembg` dan unduhan model (±170 MB).
-3d. [ ] **[Claude]** **Video pertama yang disutradarai** (usulan: Keset atau Hanasui), lewat critic loop penuh dan perbandingan baseline dengan Baru Tau #003. Lalu pemilik menilai.
+3b. [~] **[Claude]** **Pipeline kreator per video (ADR-P06).**
+   - Sudah ada di repo:
+     - `tools/cutout.py`,
+     - `tools/audit_film.py` (salinan Baru Tau + `kata_koreksi.json`),
+     - `tools/slate_score.py`,
+     - `tools/pratinjau.py` dan `tools/slate.py` dengan `--film`/`--kit`/aset/partitur,
+     - contoh lengkap `examples/aff001-keset`.
+   - **Belum:**
+     - `CLAUDE.md` aff_studio untuk sesi kreator headless (alur langkah demi langkah seperti Mode PRODUKSI Baru Tau),
+     - kit kecil `kits/affiliate/aff.js` (sekarang disclosure, caption, cutout, dan cap masih di dalam `film.js` contoh),
+     - alat pengukur jendela sunyi `vo.mp3` → `kata_koreksi.json` (sekarang skrip ad-hoc di sesi).
+3c. [x] **[Claude]** **Cutout produk otomatis:** `tools/cutout.py` (rembg `isnet-general-use` di `.venv`, ±10 detik per foto di server ARM).
+   - Pulau sisa ikon/teks dibuang, hasilnya dikemas sebagai WebP beralpha di `aset/foto.js`.
+   - Keset: 5 cutout bersih, termasuk 3 motif dari foto grid.
+   - **Belum:** deteksi teks (OCR) untuk foto yang teksnya menempel di produk.
+3d. [x] **[Claude]** **Video pertama yang disutradarai: keset** (`examples/aff001-keset`; berkas kerja di `/data/apps/affiliate-data/2026-10-19/produksi/55566811995/`).
+   - 4 putaran critic loop, BASELINE 19/20 + 1 catatan (LRA).
+   - Render ke-3 lolos QA Slate: 18,8 s, loop 0,85/255, hening sungguhan.
+   - Sisa peringatan: LRA 1,5 LU, 2 cue sinkron +2,5 frame di tengah kata VO.
+   - **[pemilik]** tonton dan nilai.
+3e. [ ] **[Claude]** **Pelajaran untuk video berikutnya:**
+   - `vo.jeda_bagian_detik` 0,7 dan satu jeda musik supaya LRA ≥ 2,5,
+   - hentakan foley ditaruh di celah kata, bukan di tengah kata,
+   - kaki/aktor sudah di layar di frame setelah potong.
 4. [x] **[Claude]** **Template `film.js`** (ADR-P05, **digantikan ADR-P06**; sekarang hanya untuk pratinjau tahap naskah). Prototipe `templates/kartu/film.js`:
    - kartu foto di atas latar warna dari foto cover, Ken Burns ke titik fokus, crop detail di beat panjang, punch-in di kata yang disorot caption,
    - teks kunci per beat, chip bukti dari data feed, caption per frasa dari timing kata, label disclosure persisten.

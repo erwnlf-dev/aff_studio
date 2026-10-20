@@ -59,11 +59,16 @@ def _folder_tulis():
     return Path(tempfile.gettempdir())
 
 
-def render(bahan, waktu, keluar, template="kartu", skala=0.25, kol=None, label=True):
+KITS = Path(os.environ.get("SLATE_KITS", "/data/apps/slate-studio/kits"))
+
+
+def render(bahan, waktu, keluar, template="kartu", skala=0.25, kol=None, label=True, film=None, kit=None):
+    """film: film.js sendiri (video yang disutradarai, ADR-P06) sebagai ganti template; kit: kit Slate (mis. midcentury)
+    yang disalin ke workspace seperti renderer.prepare_workspace. Folder aset/ di folder bahan ikut disalin."""
     bahan = Path(bahan)
-    film = AKAR / "templates" / template / "film.js"
+    film = Path(film) if film else AKAR / "templates" / template / "film.js"
     if not film.exists():
-        raise PratinjauError("template %s tidak ada" % template)
+        raise PratinjauError("film %s tidak ada" % film)
     if not FONTS.is_dir():
         raise PratinjauError("folder font Slate tidak ada: %s (set SLATE_FONTS)" % FONTS)
     kol = kol or min(len(waktu), 6)
@@ -71,10 +76,18 @@ def render(bahan, waktu, keluar, template="kartu", skala=0.25, kol=None, label=T
     w, h = kol * round(1080 * skala), baris * (round(1920 * skala) + (30 if label else 0))
     with tempfile.TemporaryDirectory(prefix="pratinjau_") as ws:
         ws = Path(ws)
+        for k in (kit or "").split("+"):
+            if k and k != "none":
+                if not (KITS / k).is_dir():
+                    raise PratinjauError("kit %s tidak ada di %s" % (k, KITS))
+                shutil.copytree(KITS / k, ws, dirs_exist_ok=True)
         shutil.copy(film, ws / "film.js")
         shutil.copy(AKAR / "templates" / "_pratinjau" / "index.html", ws / "index.html")
         for f in ("isi.json", "foto.json"):
-            shutil.copy(bahan / f, ws / f)
+            if (bahan / f).exists():
+                shutil.copy(bahan / f, ws / f)
+        if (bahan / "aset").is_dir():
+            shutil.copytree(bahan / "aset", ws / "aset")
         shutil.copytree(FONTS, ws / "fonts")
         handler = functools.partial(_Diam, directory=str(ws))
         srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -117,16 +130,21 @@ def main(argv=None):
     ap.add_argument("--frame", action="store_true", help="satu frame penuh 1080×1920 (pakai --t dengan satu nilai)")
     ap.add_argument("--template", default="kartu")
     ap.add_argument("--kol", type=int)
+    ap.add_argument("--film", help="film.js sendiri (video yang disutradarai) sebagai ganti template")
+    ap.add_argument("--kit", help="kit Slate, mis. midcentury atau midcentury+3d-lite")
     a = ap.parse_args(argv)
-    isi = json.loads((Path(a.bahan) / "isi.json").read_text(encoding="utf-8"))
-    waktu = [float(x) for x in a.t.split(",")] if a.t else waktu_bawaan(isi)
+    if a.t:
+        waktu = [float(x) for x in a.t.split(",")]
+    else:
+        isi = json.loads((Path(a.bahan) / "isi.json").read_text(encoding="utf-8"))
+        waktu = waktu_bawaan(isi)
     try:
         if a.frame:
             if len(waktu) != 1:
                 raise PratinjauError("--frame butuh tepat satu --t")
-            render(a.bahan, waktu, a.keluar, a.template, skala=1, kol=1, label=False)
+            render(a.bahan, waktu, a.keluar, a.template, skala=1, kol=1, label=False, film=a.film, kit=a.kit)
         else:
-            render(a.bahan, waktu, a.keluar, a.template, kol=a.kol)
+            render(a.bahan, waktu, a.keluar, a.template, kol=a.kol, film=a.film, kit=a.kit)
     except (PratinjauError, subprocess.TimeoutExpired) as e:
         print("gagal: %s" % e, file=sys.stderr)
         return 1
