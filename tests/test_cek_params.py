@@ -16,7 +16,8 @@ class RegistryAsli(unittest.TestCase):
 
     def test_kunci_compliance_ada(self):
         p = self.reg["parameter"]
-        for nama in ("disclosure.ada", "harga.diucapkan", "musik.sumber", "posting.maks_per_akun_per_hari",
+        for nama in ("disclosure.ada", "harga.diucapkan", "harga.tampilkan_harga_coret", "musik.sumber",
+                     "posting.maks_per_akun_per_hari",
                      "foto.tolak_watermark_pihak_lain", "varian.beda_minimal_grup"):
             self.assertEqual(p[nama].get("kunci"), "compliance", nama)
         self.assertIs(p["disclosure.ada"]["nilai"], True)
