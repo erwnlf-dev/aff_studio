@@ -153,6 +153,8 @@ fol(CUE['motif_pop'] + 9 / 24, R.pop(800, 1500, 0.1, 0.7), 0.75, 0.3)
 hit('cek', [(R.clack(0.8), 0.9, 0), (R.click(3000, 0.8), 0.8, 0)])
 hit('link', [(R.bell(0.8), 0.75, 0.3), (R.click(3200, 0.8), 0.8, 0.3)])
 
+# USANG (aturan musik 20 Okt): LEVEL ×0,1–2,3 dan penghapusan musik 'crowded' di bawah membuat musik hilang-muncul
+# (catatan pemilik). JANGAN ditiru: pakai blok ALAS, LEVEL 0,7–1,4, dan aturan mix di templates/produksi/score.py.
 # ---------------------------------------------------------------- dinamika antar-bagian (QA r1: LRA 1,2 LU, target ≥ 2,5)
 LEVEL = [(2.33, 4.55, 0.3), (11.17, 13.6, 0.38), (8.33, 11.1, 0.75), (5.12, 8.0, 1.7), (14.0, 16.4, 1.25), (16.5, 18.6, 1.7)]
 for e in MUS:

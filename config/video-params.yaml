@@ -39,6 +39,7 @@ sumber:
   R-SHOPEE-VIDEO: "Pusat Bantuan Shopee (label AI wajib untuk narasi AI, klaim harga, pelanggaran, tag produk, keranjang kiri bawah); doc 14"
   R-PLAYHEAD: "Playhead, 19 video viral TikTok Shop (Mei–Sep 2026): produk terlihat median 0,07 s, bukti median 2,73 s, tanpa wajah median 13,5 s (tryplayhead.com/blog/tiktok-shop-hooks; doc 13 §4)"
   VM-PLATFORMS: "/data/apps/video-maker/config/platforms.json: zona aman px per platform (belum diverifikasi ke platform; doc 13 §5)"
+  PEMILIK-MUSIK: "Catatan pemilik di konsol 20 Okt 2026 17:10 (Ulangi aff002-kipas): 'musik backsound nya hilang muncul hilang muncul jadi kurang enak ditonton'. Ukuran score.json keempat video pertama: rentang level musik p10-p90 27-105 dB, 10-21 jendela 0,5 s tanpa musik di luar hening (level per bagian x0,1-2,3 demi LRA + not musik dihapus di sekitar hentakan)"
   DATA-2026-10-19: "Paket data pemilik affiliate_pipeline_data_2026-10-19.zip (9 produk shortlist); temuan di docs/TODO.md §3"
 
 hipotesis:
@@ -507,6 +508,37 @@ parameter:
     satuan: dB
     alasan: "Ducking dinamis Slate 7 dB; audit #001 menemukan ducking statis 0,8 dB membuat mix seperti dinding."
     sumber: [BT-SLATE, BT-AUDIT]
+  musik.beda_bagian_maks_db:
+    status: default
+    kunci: qa
+    nilai: 3
+    rentang: [0, 4]
+    satuan: dB (faktor level musik antar-bagian bertetangga)
+    alasan: "Musik adalah alas yang kontinu, bukan penanda bagian. Faktor per bagian dijaga 0,7-1,4 (sekitar +-3 dB) dan bagian bertetangga beda <= 3 dB; dinamika datang dari aransemen (instrumen, kerapatan), bukan dari volume. Faktor x0,1-2,3 (sampai 27 dB) membuat musik hilang-muncul."
+    sumber: [PEMILIK-MUSIK]
+  musik.redam_hit_db:
+    status: default
+    nilai: 3
+    rentang: [0, 6]
+    satuan: dB (musik di sekitar hentakan, -0,12..+0,25 s)
+    alasan: "Hentakan tetap 3-6 dB di atas musik dengan meredam musik 3 dB sesaat. Not musik di sekitar hentakan tidak dihapus lagi (aturan 'crowded' lama): penghapusan itu membuat lubang di alas musik setiap ada hentakan."
+    sumber: [PEMILIK-MUSIK, BT-SLATE]
+  musik.lubang_db:
+    status: default
+    kunci: qa
+    nilai: 12
+    rentang: [9, 18]
+    satuan: dB di bawah median level musik (jendela 0,5 s, di luar hening +-0,2 s)
+    alasan: "Batas 'lubang' yang dicek audit_film. 12 dB = musik praktis hilang di bawah VO yang di-duck 7 dB. Hening yang disengaja (satu, sebelum produk masuk) tidak dihitung."
+    sumber: [PEMILIK-MUSIK, TEKNIS]
+  musik.rentang_level_maks_db:
+    status: default
+    kunci: qa
+    nilai: 12
+    rentang: [8, 16]
+    satuan: dB (p10-p90 level musik per jendela 0,5 s, di luar hening)
+    alasan: "Dikalibrasi dari keempat partitur pertama: dengan gain musik dibuat rata, kerapatan not saja memberi 9-11 dB; faktor bagian +-3 dB masih muat di 12. Partitur lama 27-105 dB."
+    sumber: [PEMILIK-MUSIK, TEKNIS]
   audio.lufs_target:
     status: default
     kunci: qa

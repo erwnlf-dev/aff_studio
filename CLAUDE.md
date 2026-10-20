@@ -24,7 +24,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
 | `naskah` | Validasi `naskah.json` (urutan beat, sumber klaim, panjang kalimat) → `naskah.txt`, `scenes.json`, `isi.json` |
 | `vo --voice <id>` | Voiceover sekali, lalu ukur jendela sunyi → `kata_koreksi.json` |
 | `kata` | `const KATA = …` untuk `film.js` + daftar kata berindeks dan frame-nya + jendela sunyi |
-| `audit` | Audit numerik (kontrak render, CUES ±1 frame, hit partitur +1 frame) |
+| `audit` | Audit numerik (kontrak render, CUES ±1 frame, hit partitur +1 frame, musik kontinu: 0 lubang dan rentang level ≤ 12 dB) |
 | `pratinjau --t 0,1.5,… --keluar pratinjau_rN.jpg [--kol 8] [--slate]` | Contact sheet; buka gambarnya dengan Read. `--slate` = renderer Slate (cek paritas sekali sebelum render) |
 | `skor` | Jalankan `score.py` → `score.json`, lalu audit |
 | `render` | Render di Slate + QA + unduh `final.mp4` |
@@ -111,10 +111,14 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
      - pratinjau ulang.
    - **Putaran 1:** cek default TERLARANG (glow, partikel, gradien polos, teks karangan, garis kecepatan) dan sisa teks penjual.
    - Sebelum render: sekali `pratinjau --slate` untuk paritas.
-8. **Partitur → `score.py`** (pola `examples/aff001-keset/score.py`), lalu `skor`.
-   - **Musik:**
-     - aransemen per bagian sesuai palet gaya, 100–120 BPM,
-     - level musik per bagian dibedakan supaya LRA ≥ 2,5 LU (bagian masalah tipis, produk/CTA penuh).
+8. **Partitur → `score.py`** (kerangka sudah ada dengan blok alas, level, dan aturan mix; aransemen dan foley berpola `examples/aff001-keset/score.py`, tapi **jangan** salin `LEVEL` dan aturan mix contoh itu), lalu `skor`.
+   - **Musik = alas yang kontinu** (catatan pemilik 20 Okt: "musik backsound hilang muncul… kurang enak ditonton"):
+     - aransemen per bagian sesuai palet gaya, 100–120 BPM; dinamika antarbagian dari **aransemen** (instrumen, kerapatan), bukan dari volume,
+     - di luar jendela hening musik tidak pernah hilang: alas tipis per birama (`ALAS`) di bawah aransemen bagian,
+     - faktor `LEVEL` per bagian 0,7–1,4; bagian bertetangga beda ≤ 3 dB (`musik.beda_bagian_maks_db`),
+     - di sekitar hentakan musik diredam 3 dB (×0,7, `musik.redam_hit_db`), **tidak dihapus**; yang boleh dibuang hanya foley yang menabrak hentakan,
+     - `skor`/`audit` memeriksanya: 0 lubang (jendela 0,5 s > 12 dB di bawah median) dan rentang level p10–p90 ≤ 12 dB. GAGAL di sini = perbaiki partitur, bukan render,
+     - peringatan QA "LRA < 2,5 LU" **diterima** (narasi 20 detik yang padat memang datar); jangan dikejar dengan menaikturunkan volume musik. Catat angkanya di `cek_akhir.md`.
    - **Foley dan hentakan:**
      - foley setiap aksi, dengan energi > 150 Hz,
      - hentakan `put(cue + 1/24, …, cue=id)` dibuka bunyi ber-attack tajam (click/clack/stamp), dan sebisa mungkin di **celah kata** (di tengah kata, QA menangkap konsonan narator),

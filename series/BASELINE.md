@@ -30,7 +30,8 @@ Butir 1–14 adalah BASELINE Baru Tau (`baru-tau-autopilot/series/BASELINE.md`) 
     - aransemen berbeda per bagian,
     - foley pada setiap aksi, dengan energi > 150 Hz,
     - hentakan 3–6 dB di atas musik **[QA server]**,
-    - LRA ≥ 2,5 LU (tidak ada peringatan "mix datar").
+    - musik kontinu: di luar hening tidak pernah hilang, level antarbagian rata (0 lubang, rentang p10–p90 ≤ 12 dB) **[audit]**. Catatan pemilik 20 Okt: musik yang "hilang muncul" kurang enak ditonton.
+    - LRA dicatat; peringatan "< 2,5 LU" diterima dan **tidak** dikejar dengan menaikturunkan volume musik.
 12. **Klaim:** setiap kalimat naskah, teks layar, dan teks post bersumber dari data produk (`sumber` per beat lolos `siapkan_film.py`).
 13. **Aman dan terbaca:** ≤ 3 kedipan per detik dan kontras teks ≥ 4,5:1 di setiap frame **[QA server]**.
 14. **Audit numerik bersih:** kontrak render, CUES ±1 frame dari katanya, hentakan 1 frame setelah cue.

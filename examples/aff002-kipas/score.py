@@ -175,6 +175,8 @@ for t0, c, g in [(8.6, 'C7', 1.6), (11.45, 'Dm7', 1.4), (14.27, 'G6', 1.6)]:    
     bass(t0, ROOT[c], 0.3, 0.8, 1.0)
     mus(t0, R.kick(0.7), 0.6, 0)
 
+# USANG (aturan musik 20 Okt): LEVEL ×0,1–2,3 dan penghapusan musik 'crowded' di bawah membuat musik hilang-muncul
+# (catatan pemilik). JANGAN ditiru: pakai blok ALAS, LEVEL 0,7–1,4, dan aturan mix di templates/produksi/score.py.
 # ---------------------------------------------------------------- dinamika antar-bagian (target LRA ≥ 2,5 LU; r1 1,8 → lebih kontras)
 LEVEL = [(3.0, 5.2, 0.1), (11.9, 14.15, 0.2), (9.1, 11.4, 0.45), (5.85, 8.55, 2.3), (14.7, 16.4, 1.5), (16.95, 19.0, 2.3)]
 for e in MUS:
