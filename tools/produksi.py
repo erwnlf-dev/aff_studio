@@ -140,6 +140,12 @@ def cmd_init(a):
     if ditolak:
         raise ProduksiError("produk ditolak validator paket: " + "; ".join(ditolak))
     folder = Path(a.folder) if a.folder else Path(a.paket) / "produksi" / a.produk
+    if getattr(a, "baru", False) and folder.exists():
+        import datetime
+        tujuan = folder.parent / "_arsip" / ("%s-%s" % (folder.name, datetime.datetime.now().strftime("%Y%m%d%H%M%S")))
+        tujuan.parent.mkdir(parents=True, exist_ok=True)
+        folder.rename(tujuan)
+        print("folder lama diarsipkan utuh (naskah baru): %s" % tujuan)
     folder.mkdir(parents=True, exist_ok=True)
     arsip = arsipkan_hasil(folder)
     if arsip:
@@ -411,7 +417,11 @@ def keadaan(folder):
     """belum | berjalan | gagal | selesai | disetujui | ditolak | ulang — dibaca konsol web dan status --json."""
     folder = Path(folder)
     run = AKAR / "logs" / ".produksi.run"
-    if run.exists() and str(folder) in run.read_text(encoding="utf-8", errors="replace") and kunci_dipegang():
+    try:
+        di_penanda = run.read_text(encoding="utf-8", errors="replace").split()[2] == str(folder)
+    except (OSError, IndexError):
+        di_penanda = False
+    if di_penanda and kunci_dipegang():
         return "berjalan"
     rv = folder / "review.json"
     if rv.exists():
@@ -444,6 +454,7 @@ def main(argv=None):
         ap.add_argument("--paket", required=True)
         ap.add_argument("--produk", required=True)
         ap.add_argument("--folder")
+        ap.add_argument("--baru", action="store_true", help="naskah dan voiceover baru: folder lama diarsipkan utuh ke produksi/_arsip/")
         a = ap.parse_args(argv)
         fn = cmd_init
     else:

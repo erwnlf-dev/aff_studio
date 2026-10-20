@@ -13,6 +13,8 @@ cd "$(dirname "$0")"
 # (systemd: python3 sistem tanpa Pillow/PyYAML)
 [ -x .venv/bin/python3 ] && export PATH="$(pwd)/.venv/bin:$PATH"
 PAKET="${1:?folder paket}"; ID="${2:?product_id}"; CATATAN="${3:-}"
+# PRODUKSI_BARU=1: naskah dan voiceover baru (init mengarsipkan folder lama utuh, di bawah kunci produksi)
+INIT_BARU=(); [ "${PRODUKSI_BARU:-}" = "1" ] && INIT_BARU=(--baru)
 [[ "$ID" =~ ^[0-9]{5,20}$ ]] || { echo "product_id tidak valid: $ID" >&2; exit 2; }
 [ -d "$PAKET" ] || { echo "paket tidak ada: $PAKET" >&2; exit 2; }
 
@@ -29,6 +31,8 @@ mkdir -p logs
 # seluruh pohon produksi mati; konsol web membaca "produksi berjalan" dari kunci ini (/proc/locks), bukan dari PID.
 exec 9> logs/.produksi.lock
 flock -n 9 || { echo "produksi lain masih berjalan" >&2; exit 3; }
+# catatan permanen "skrip ini sudah memegang kunci" (konsol: sejak di sini skrip yang mengabari, juga kalau keluar cepat)
+echo "$$ $ID $(date -Is)" >> logs/produksi_mulai.log
 
 FOLDER="$(cd "$PAKET" && pwd)/produksi/$ID"
 # penanda run untuk konsol web (siapa yang sedang diproduksi; dibuang saat skrip selesai) + kabar ke inbox
@@ -52,7 +56,7 @@ trap henti TERM INT HUP
 dihentikan() {
   kabar info "Affiliate: produksi dihentikan" "$ID dihentikan pemilik. Voiceover yang sudah ada dipakai lagi kalau diproduksi ulang."
   exit 143; }
-python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER" || {
+python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER" "${INIT_BARU[@]}" || {
   [ -n "$DIHENTIKAN" ] && dihentikan
   kabar gagal "Affiliate: produksi tidak bisa dimulai" "$ID: tools/produksi.py init gagal. Lihat logs/web_$ID.out."
   exit 4; }
