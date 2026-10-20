@@ -159,6 +159,14 @@ class Produksi(unittest.TestCase):
             rows = list(csv.DictReader(f))
         self.assertEqual(len(rows), 1)
         self.assertEqual((rows[0]["status"], rows[0]["platform"]), ("siap_unggah", "shopee_video"))
+        # ditarik konsol (ditolak / diulang setelah disetujui), lalu disetujui lagi: ditawarkan lagi, tetap satu baris
+        log = self.paket / "uploads" / "upload_log.csv"
+        log.write_text(log.read_text().replace("siap_unggah", "ditarik"))
+        self.assertEqual(produksi.main([str(self.folder), "paket-unggah"]), 0)
+        with open(log, newline="") as f:
+            rows = list(csv.DictReader(f))
+        self.assertEqual([r["status"] for r in rows], ["siap_unggah"])
+        self.assertTrue((self.paket / "uploads" / ".upload_log.lock").exists())
 
     def test_biaya(self):
         jl = Path(self.tmp.name) / "sesi.jsonl"

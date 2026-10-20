@@ -31,14 +31,12 @@ mkdir -p logs
 # seluruh pohon produksi mati; konsol web membaca "produksi berjalan" dari kunci ini (/proc/locks), bukan dari PID.
 exec 9> logs/.produksi.lock
 flock -n 9 || { echo "produksi lain masih berjalan" >&2; exit 3; }
-# catatan permanen "skrip ini sudah memegang kunci" (konsol: sejak di sini skrip yang mengabari, juga kalau keluar cepat)
-echo "$$ $ID $(date -Is)" >> logs/produksi_mulai.log
 
 FOLDER="$(cd "$PAKET" && pwd)/produksi/$ID"
-# penanda run untuk konsol web (siapa yang sedang diproduksi; dibuang saat skrip selesai) + kabar ke inbox
 DATA_ROOT="$(env_val AFF_DATA_DIR)"; DATA_ROOT="${DATA_ROOT:-$(cd "$PAKET/.." && pwd)}"
-echo "$$ $ID $FOLDER $(date -Is)" > logs/.produksi.run
-kabar() {   # kabar <jenis> <judul> <teks>
+DIKABARI=""; ANAK=""; DIHENTIKAN=""
+kabar() {   # kabar <jenis> <judul> <teks>  → inbox konsol web (Notifikasi + Web Push)
+  DIKABARI=1
   python3 - "$DATA_ROOT/inbox.jsonl" "$1" "$2" "$3" "${WEB_ROOT_PATH:-/barutau}/affiliate/produk/$(basename "$(cd "$PAKET" && pwd)")/$ID" <<'PY'
 import datetime, json, sys, uuid
 f, jenis, judul, teks, tautan = sys.argv[1:6]
@@ -47,15 +45,36 @@ with open(f, "a", encoding="utf-8") as o:
                         "jenis": jenis, "judul": judul, "teks": teks, "tautan": tautan}, ensure_ascii=False) + "\n")
 PY
 }
-trap 'rm -f logs/.produksi.run "${SETTINGS:-}"' EXIT
-# Dihentikan (konsol web "Hentikan", kill): teruskan ke timeout, yang meneruskan ke grup prosesnya sendiri (claude dan
-# alatnya; -k 120 = SIGKILL kalau masih hidup), lalu tunggu sampai benar-benar mati sebelum keluar.
-ANAK=""; DIHENTIKAN=""
-henti() { DIHENTIKAN=1; [ -n "$ANAK" ] && kill -TERM "$ANAK" 2>/dev/null || true; }
-trap henti TERM INT HUP
 dihentikan() {
   kabar info "Affiliate: produksi dihentikan" "$ID dihentikan pemilik. Voiceover yang sudah ada dipakai lagi kalau diproduksi ulang."
   exit 143; }
+# Sejak kunci dipegang, skrip ini yang mengabari: setiap keluar tidak normal yang belum mengabari (set -e di mktemp/sed,
+# init, dihentikan di tengah langkah mana pun) tetap mengirim satu kabar, lalu penanda dan settings sementara dibuang.
+akhir() {
+  local rc=$?
+  rm -f logs/.produksi.run "${SETTINGS:-}"
+  if [ "$rc" -ne 0 ] && [ -z "$DIKABARI" ]; then
+    if [ -n "$DIHENTIKAN" ]; then
+      kabar info "Affiliate: produksi dihentikan" "$ID dihentikan pemilik." || true
+    else
+      kabar gagal "Affiliate: produksi berhenti" "$ID: run_produksi.sh berhenti (kode $rc) sebelum selesai. Lihat logs/web_$ID.out." || true
+    fi
+  fi
+}
+trap akhir EXIT
+# Dihentikan (konsol web "Hentikan", kill): teruskan ke timeout, yang meneruskan ke grup prosesnya sendiri (claude dan
+# alatnya; -k 120 = SIGKILL kalau masih hidup), lalu tunggu sampai benar-benar mati sebelum keluar.
+henti() { DIHENTIKAN=1; [ -n "$ANAK" ] && kill -TERM "$ANAK" 2>/dev/null || true; }
+trap henti TERM INT HUP
+
+# penanda run untuk konsol web (siapa yang sedang diproduksi; dibuang saat skrip selesai)
+echo "$$ $ID $FOLDER $(date -Is)" > logs/.produksi.run
+# catatan permanen "skrip ini sudah memegang kunci" (konsol: sejak di sini skrip yang mengabari, juga kalau keluar
+# cepat); dipotong ke 100 baris terakhir begitu lewat 500 (konsol mencocokkan PID + ID produk)
+M=logs/produksi_mulai.log
+if [ -f "$M" ] && [ "$(wc -l < "$M")" -gt 500 ]; then tail -n 100 "$M" > "$M.tmp" && mv "$M.tmp" "$M"; fi
+echo "$$ $ID $(date -Is)" >> "$M"
+
 python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER" "${INIT_BARU[@]}" || {
   [ -n "$DIHENTIKAN" ] && dihentikan
   kabar gagal "Affiliate: produksi tidak bisa dimulai" "$ID: tools/produksi.py init gagal. Lihat logs/web_$ID.out."
@@ -78,6 +97,7 @@ REPO="$(pwd)"; SETTINGS="$(mktemp --suffix=.json)"
 sed "s#{{REPO}}#$REPO#g" .claude/kreator.json > "$SETTINGS"
 ADD_DIR=(--add-dir "$FOLDER" --add-dir "$(cd "$PAKET" && pwd)")
 for d in /data/apps/slate-studio/kits /data/apps/lemo-opuscar /data/apps/baru-tau-autopilot/series; do [ -d "$d" ] && ADD_DIR+=(--add-dir "$d"); done
+[ -n "$DIHENTIKAN" ] && dihentikan
 echo "run $(date -Is) produk=$ID model=$MODEL effort=$EFFORT voice=$VOICE claude=$("$BIN" --version 2>/dev/null)" >> "$LOG"
 CLAUDE_CODE_EFFORT_LEVEL="$EFFORT" ENABLE_CLAUDEAI_MCP_SERVERS=false \
 timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --effort "$EFFORT" \

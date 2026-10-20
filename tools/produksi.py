@@ -86,9 +86,9 @@ def foto_sheet(produk, tujuan):
     sheet.save(tujuan, quality=88)
 
 
-# Hasil satu run. Run ulang di folder yang sama memindahkannya ke _sebelum/<ts>/ (konsol web melakukan hal yang sama
-# sebelum memanggil run_produksi.sh): GAGAL.md lama tidak boleh menutupi video baru, dan final.mp4/qa_compliance.json
-# lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap dipakai lagi.
+# Hasil satu run. Run ulang di folder yang sama memindahkannya ke _sebelum/<ts>/ (hanya di sini, dipanggil
+# run_produksi.sh di bawah kunci produksi; konsol web tidak mengarsipkan): GAGAL.md lama tidak boleh menutupi video baru,
+# dan final.mp4/qa_compliance.json lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap.
 HASIL_RUN = ("final.mp4", "final_sheet.jpg", "cek_akhir.md", "qa_compliance.json", "teks_post.txt", "status.json",
              "biaya.json", "GAGAL.md")
 
@@ -335,6 +335,35 @@ def cmd_compliance(a):
     return r.returncode
 
 
+class kunci_log_unggah:
+    """flock bersama atas uploads/.upload_log.lock: paket-unggah (di sini) dan konsol web (tarik, tandai terunggah)
+    menulis ulang upload_log.csv hanya sambil memegangnya, jadi baris tidak hilang saat keduanya menulis bersamaan."""
+
+    def __init__(self, log):
+        self.path = Path(log).parent / ".upload_log.lock"
+
+    def __enter__(self):
+        import fcntl
+        self.f = open(self.path, "a")
+        fcntl.flock(self.f, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        self.f.close()
+
+
+def tulis_log_unggah(log, kolom, rows):
+    import csv
+    import io
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=kolom)
+    w.writeheader()
+    w.writerows(rows)
+    tmp = Path(log).with_suffix(".tmp")
+    tmp.write_text(buf.getvalue(), encoding="utf-8")
+    tmp.replace(log)
+
+
 def video_id(folder):
     st = json.loads((Path(folder) / "status.json").read_text(encoding="utf-8"))
     return "%s-%s" % (meta(folder)["produk"], st["job_id"])
@@ -367,18 +396,22 @@ def cmd_paket_unggah(a):
     (tujuan / "meta.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
     log = Path(m["paket"]) / "uploads" / "upload_log.csv"
     log.parent.mkdir(parents=True, exist_ok=True)
-    baru = not log.exists() or log.stat().st_size == 0
-    sudah = set()
-    if not baru:
-        with open(log, newline="", encoding="utf-8") as f:
-            sudah = {(r.get("video_file"), r.get("platform")) for r in csv.DictReader(f)}
     berkas = str(tujuan / (vid + ".mp4"))
-    if (berkas, a.platform) not in sudah:
-        with open(log, "a", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            if baru:
-                w.writerow(["timestamp", "product_id", "video_file", "platform", "caption", "affiliate_link", "status", "post_url", "notes"])
-            w.writerow([info["disetujui"], produk["id"], berkas, a.platform, caption, produk["link"], "siap_unggah", "", "video_id=" + vid])
+    kolom = ["timestamp", "product_id", "video_file", "platform", "caption", "affiliate_link", "status", "post_url", "notes"]
+    with kunci_log_unggah(log):
+        rows = []
+        if log.exists() and log.stat().st_size:
+            with open(log, newline="", encoding="utf-8") as f:
+                rd = csv.DictReader(f)
+                kolom, rows = rd.fieldnames, list(rd)
+        lama = [r for r in rows if (r.get("video_file"), r.get("platform")) == (berkas, a.platform)]
+        if not lama:
+            rows.append(dict(zip(kolom, [info["disetujui"], produk["id"], berkas, a.platform, caption, produk["link"],
+                                         "siap_unggah", "", "video_id=" + vid])))
+        for r in lama:                 # disetujui lagi setelah ditarik (ditolak/ulang): tawarkan lagi
+            if r.get("status") == "ditarik":
+                r.update(status="siap_unggah", timestamp=info["disetujui"], caption=caption)
+        tulis_log_unggah(log, kolom, rows)
     print("paket unggah: %s" % tujuan)
     return 0
 
