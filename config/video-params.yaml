@@ -224,11 +224,11 @@ parameter:
     sumber: [BT-SLATE, BT-AUDIT, H04]
   vo.jeda_bagian_detik:
     status: default
-    nilai: 0.5
+    nilai: 0.7
     rentang: [0.3, 0.8]
     satuan: detik
-    alasan: "Baru Tau 0,7 di pergantian bagian. Jualan punya 2 pergantian besar (masalah→produk, bukti→CTA)."
-    sumber: [BT-SLATE]
+    alasan: "Baru Tau 0,7 di pergantian bagian. aff001 (0,5) dan aff002 (0,5) berakhir dengan LRA 1,5 dan 2,2 LU (< 2,5, mix datar) karena 19 s narasi hampir tanpa celah; kedua kreator menyimpulkan 0,7. Durasi naik ±1,2 s untuk 6 pergantian."
+    sumber: [BT-SLATE, BT-AUDIT]
   vo.jeda_sebelum_payoff_detik:
     status: default
     nilai: 0.45

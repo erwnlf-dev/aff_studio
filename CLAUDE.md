@@ -15,12 +15,12 @@ Kalau ada catatan pemilik di prompt, catatan itu menang bila bertentangan dengan
 
 ## Alat
 
-Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>` (bantuan: `python3 tools/produksi.py -h`). Folder kerja ada di luar repo (`<paket>/produksi/<id>/`) dan disebut di prompt. Hanya di folder itu kamu menulis.
+Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direktori repo (jangan `cd`; perintah lain di luar daftar ini ditolak sesi) (bantuan: `python3 tools/produksi.py -h`). Folder kerja ada di luar repo (`<paket>/produksi/<id>/`) dan disebut di prompt. Hanya di folder itu kamu menulis.
 
 | Perintah | Isi |
 |---|---|
 | `init` | Sudah dijalankan skrip: `produk.json`, `data_layar.json`, `foto_sheet.jpg`, kerangka `naskah.json`/`brief.md`/`film.js`/`score.py` |
-| `cutout --foto N --nama X [--crop x0,y0,x1,y1]` | Cutout produk (rembg) → `cutout/X.png` + `aset/foto.js` + `cutout_sheet.jpg` |
+| `cutout --foto N --nama X [--crop x0,y0,x1,y1] [--model u2net]` | Cutout produk (rembg; `u2net` kadang lebih bersih untuk produk gelap) → `cutout/X.png` + `aset/foto.js` + `cutout_sheet.jpg` |
 | `naskah` | Validasi `naskah.json` (urutan beat, sumber klaim, panjang kalimat) → `naskah.txt`, `scenes.json`, `isi.json` |
 | `vo --voice <id>` | Voiceover sekali, lalu ukur jendela sunyi → `kata_koreksi.json` |
 | `kata` | `const KATA = …` untuk `film.js` + daftar kata berindeks dan frame-nya + jendela sunyi |
@@ -28,6 +28,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>` (bantuan: `p
 | `pratinjau --t 0,1.5,… --keluar pratinjau_rN.jpg [--kol 8] [--slate]` | Contact sheet; buka gambarnya dengan Read. `--slate` = renderer Slate (cek paritas sekali sebelum render) |
 | `skor` | Jalankan `score.py` → `score.json`, lalu audit |
 | `render` | Render di Slate + QA + unduh `final.mp4` |
+| `qa` | Ringkasan QA render terakhir (`status.json`): masalah, peringatan, cue tidak sinkron, kontras |
 | `sheet` | `final_sheet.jpg`: 20 frame dari `final.mp4` |
 | `status` | Langkah yang sudah/belum |
 

@@ -1,12 +1,12 @@
 {
   "permissions": {
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
+      "Read(/{{REPO}}/.env)",
+      "Read(/{{REPO}}/.env.*)",
       "Read(~/.claude/**)",
       "Read(//data/apps/baru-tau-autopilot/.env)",
       "Read(//data/apps/slate-studio/.env)",
-      "Edit(./**)",
+      "Edit(/{{REPO}}/**)",
       "Edit(//data/apps/baru-tau-autopilot/**)",
       "Edit(//data/apps/slate-studio/**)",
       "Edit(//data/apps/lemo-opuscar/**)"

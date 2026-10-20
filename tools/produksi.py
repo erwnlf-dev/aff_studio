@@ -2,7 +2,7 @@
 """Satu pintu produksi video affiliate yang disutradarai (ADR-P06). Langkah dan aturannya: CLAUDE.md.
 
     python3 tools/produksi.py init --paket <folder paket> --produk <id>   folder kerja + kerangka + foto_sheet.jpg
-    python3 tools/produksi.py <folder> cutout --foto N --nama X [--crop x0,y0,x1,y1]
+    python3 tools/produksi.py <folder> cutout --foto N --nama X [--crop x0,y0,x1,y1] [--model u2net]
     python3 tools/produksi.py <folder> naskah                    validasi naskah.json → naskah.txt, scenes.json, isi.json
     python3 tools/produksi.py <folder> vo --voice <id>           buat_voiceover (sekali) + tools/sunyi.py
     python3 tools/produksi.py <folder> kata                      KATA untuk film.js + calon hening (dari kata_koreksi.json)
@@ -10,6 +10,7 @@
     python3 tools/produksi.py <folder> pratinjau --t 0,1.5,... --keluar pratinjau_r1.jpg [--slate]
     python3 tools/produksi.py <folder> skor                      jalankan score.py → score.json, lalu audit
     python3 tools/produksi.py <folder> render                    render_film (META.dur dari film.js), tunggu, unduh final.mp4
+    python3 tools/produksi.py <folder> qa                        ringkasan QA render terakhir (status.json)
     python3 tools/produksi.py <folder> sheet                     final_sheet.jpg: 20 frame dari final.mp4 (cek tanpa suara)
     python3 tools/produksi.py <folder> status                    langkah yang sudah/belum
 
@@ -135,6 +136,8 @@ def cmd_cutout(a):
     args = [VENV_PY, TOOLS / "cutout.py", "--paket", m["paket"], "--produk", m["produk"], "--foto", a.foto, "--nama", a.nama, "--keluar", a.folder]
     if a.crop:
         args += ["--crop", a.crop]
+    if a.model:
+        args += ["--model", a.model]
     jalan(args)
     from PIL import Image
     cek = sorted(Path(a.folder, "cutout").glob("*_cek.jpg"))
@@ -241,6 +244,26 @@ def cmd_render(a):
     return 0 if q.get("lolos") else 1
 
 
+def cmd_qa(a):
+    """Ringkasan QA render terakhir dari status.json (tanpa link berisi token)."""
+    st = json.loads((Path(a.folder) / "status.json").read_text(encoding="utf-8"))
+    ren = st.get("render") or {}
+    q = ren.get("qa") or {}
+    print("job %s | render %s | QA lolos %s | %s–%s" % (st.get("job_id"), ren.get("state"), q.get("lolos"), ren.get("mulai"), ren.get("selesai")))
+    for k in ("durasi", "fps", "lufs", "peak_dbfs", "lra", "beku", "hitam", "loop_selisih", "hening", "kedip"):
+        print("  %-13s %s" % (k, q.get(k)))
+    for m in q.get("masalah") or []:
+        print("MASALAH: " + m)
+    for m in q.get("peringatan") or []:
+        print("peringatan: " + m)
+    for x in q.get("sinkron") or []:
+        if x.get("lolos") is False:
+            print("  tidak sinkron: %s gambar %.3f bunyi %s (%+d ms, %s)" % (x["cue"], x["gambar_s"], x.get("bunyi_s"), x.get("selisih_ms") or 0, x.get("cara")))
+    for x in q.get("kontras") or []:
+        print("  kontras %s di %s: %s:1 %s" % (x["teks"], x["latar"], x["rasio"], "✔" if x["lolos"] else "✘"))
+    return 0 if q.get("lolos") else 1
+
+
 def cmd_sheet(a):
     folder = Path(a.folder)
     from PIL import Image, ImageDraw
@@ -295,7 +318,9 @@ def main(argv=None):
         s.add_argument("--foto", required=True, type=int)
         s.add_argument("--nama", required=True)
         s.add_argument("--crop")
-        for n in ("naskah", "kata", "audit", "skor", "render", "sheet", "status"):
+        s.add_argument("--model", choices=["isnet-general-use", "u2net", "u2netp", "silueta"],
+                       help="model rembg (bawaan isnet-general-use; u2net kadang lebih baik untuk produk gelap)")
+        for n in ("naskah", "kata", "audit", "skor", "render", "qa", "sheet", "status"):
             sub.add_parser(n)
         s = sub.add_parser("vo")
         s.add_argument("--voice")
@@ -306,7 +331,8 @@ def main(argv=None):
         s.add_argument("--slate", action="store_true")
         a = ap.parse_args(argv)
         fn = {"cutout": cmd_cutout, "naskah": cmd_naskah, "vo": cmd_vo, "kata": cmd_kata, "audit": cmd_audit,
-              "pratinjau": cmd_pratinjau, "skor": cmd_skor, "render": cmd_render, "sheet": cmd_sheet, "status": cmd_status}[a.cmd]
+              "pratinjau": cmd_pratinjau, "skor": cmd_skor, "render": cmd_render, "qa": cmd_qa, "sheet": cmd_sheet,
+              "status": cmd_status}[a.cmd]
     try:
         return fn(a)
     except (ProduksiError, paket.PaketError, OSError, ValueError) as e:

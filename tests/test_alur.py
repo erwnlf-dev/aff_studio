@@ -108,8 +108,10 @@ class Skrip(unittest.TestCase):
     def test_izin_kreator(self):
         cfg = json.loads((AKAR / ".claude" / "kreator.json").read_text())
         deny = cfg["permissions"]["deny"]
-        self.assertIn("Read(./.env)", deny)
-        self.assertIn("Edit(./**)", deny)
+        # path absolut (diisi run_produksi.sh): aturan "./" ikut berpindah kalau kreator `cd` (run kipas 20 Okt)
+        self.assertIn("Read(/{{REPO}}/.env)", deny)
+        self.assertIn("Edit(/{{REPO}}/**)", deny)
+        self.assertFalse(any(d.startswith(("Read(./", "Edit(./")) for d in deny), deny)
         isi = (AKAR / "run_produksi.sh").read_text()
         for t in ("WebSearch", "WebFetch"):
             self.assertIn('"%s"' % t, isi.split("--disallowedTools", 1)[1].split("\n", 1)[0])
