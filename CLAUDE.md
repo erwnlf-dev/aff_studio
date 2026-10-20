@@ -29,6 +29,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
 | `skor` | Jalankan `score.py` → `score.json`, lalu audit |
 | `render` | Render di Slate + QA + unduh `final.mp4` |
 | `qa` | Ringkasan QA render terakhir (`status.json`): masalah, peringatan, cue tidak sinkron, kontras |
+| `compliance` | OCR frame `final.mp4`: label disclosure di setiap frame, tanpa Rp/%/diskon/termurah, angka yang tidak ada di data ditandai PERIKSA → `qa_compliance.json` |
 | `sheet` | `final_sheet.jpg`: 20 frame dari `final.mp4` |
 | `status` | Langkah yang sudah/belum |
 
@@ -54,7 +55,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
    - 1 foto hero (produk utuh, sudut yang cocok dengan adegan),
    - 0–3 foto pendukung (varian, detail).
 
-   Lalu jalankan `cutout` untuk masing-masing dan buka `cutout_sheet.jpg`. Tolak foto yang:
+   `init` sudah membaca teks tercetak di setiap foto (`teks_foto.json`; angka yang tidak ada di data ditandai). Lalu jalankan `cutout` untuk masing-masing dan buka `cutout_sheet.jpg`. Tolak foto yang:
    - teks/badge penjual menempel di produk,
    - tepinya rusak,
    - produknya terpotong,
@@ -101,7 +102,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
      - teks kunci ≤ 3 kata.
    - **Wajib di setiap frame:** `disclosure(ctx)` dan `caption(ctx, t)` (dari `buatCaption`), lalu `paperFinish`.
    - **Transisi:** potong keras atau dari konten (`wipe`, `irisMasuk`). **Frame tepat setelah transisi sudah berisi subjek**, termasuk aktor yang masuk; tidak ada layar kosong.
-   - **Zona aman:** teks dan aksi di atas caption (dasar caption y = 1.470), di bawah y = 150, kanan ≤ 940.
+   - **Zona aman:** teks dan aksi di atas caption (dasar caption y = 1.470), di bawah y = 150, kanan ≤ 940. Shopee Video: keranjang oranye di kiri bawah (doc 14 §2), jadi aksi penting di atas y = 1.300.
 7. **Critic loop.**
    - **Urutan:** `audit` dulu (0 gagal), lalu `pratinjau` minimal **dua putaran** (biasanya 3–4) dengan 16–24 momen, termasuk frame tepat setelah setiap transisi.
    - **Setiap putaran:**
@@ -123,7 +124,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
 10. **Render.** `render`. QA Slate harus lolos.
     - Kalau `MASALAH`: perbaiki lalu render ulang, maksimal 3 render total.
     - Peringatan yang tersisa dijelaskan di `cek_akhir.md` dengan angkanya.
-11. **Cek akhir.** `sheet`, buka `final_sheet.jpg`, lalu tulis `cek_akhir.md`:
+11. **Cek akhir.** `compliance` harus LOLOS (setiap angka PERIKSA dijelaskan di cek akhir atau dibuang dari film lalu render ulang). `sheet`, buka `final_sheet.jpg`, lalu tulis `cek_akhir.md`:
     - ringkasan QA,
     - tabel baca-tanpa-suara per bagian,
     - peringatan tersisa,

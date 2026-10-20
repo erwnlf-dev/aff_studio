@@ -260,8 +260,17 @@ def cmd_qa(a):
 def cmd_pratinjau(a):
     folder = Path(a.folder)
     film, tambahan = _bahan_film(folder, a)
-    content = panggil("pratinjau_film", {"film_js": film, "waktu": [float(x) for x in a.t.split(",")],
-                                         "kit": a.kit or "none", "file_tambahan": tambahan}, timeout=600)
+    for _ in range(12):                          # Slate PR #10: saat render berjalan pratinjau membalas {sibuk, coba_lagi_detik}
+        content = panggil("pratinjau_film", {"film_js": film, "waktu": [float(x) for x in a.t.split(",")],
+                                             "kit": a.kit or "none", "file_tambahan": tambahan}, timeout=600)
+        teks = "".join(c.get("text", "") for c in content if c.get("type") == "text")
+        try:
+            sibuk = json.loads(teks) if teks.strip().startswith("{") else {}
+        except ValueError:
+            sibuk = {}
+        if not sibuk.get("sibuk"):
+            break
+        time.sleep(min(max(int(sibuk.get("coba_lagi_detik") or 15), 5), 60))
     for c in content:
         if c.get("type") == "image":
             keluar = Path(a.keluar or folder / "pratinjau_slate.jpg")

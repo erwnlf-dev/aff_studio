@@ -9,6 +9,9 @@
 # transkrip dengan tools/cek_sesi.py. Hasil: final.mp4 + cek_akhir.md + teks_post.txt di folder kerja, atau GAGAL.md.
 set -euo pipefail
 cd "$(dirname "$0")"
+# Python proyek (.venv: PyYAML, Pillow, rembg, rapidocr) dipakai skrip dan sesi kreator, juga saat dijalankan konsol web
+# (systemd: python3 sistem tanpa Pillow/PyYAML)
+[ -x .venv/bin/python3 ] && export PATH="$(pwd)/.venv/bin:$PATH"
 PAKET="${1:?folder paket}"; ID="${2:?product_id}"; CATATAN="${3:-}"
 [[ "$ID" =~ ^[0-9]{5,20}$ ]] || { echo "product_id tidak valid: $ID" >&2; exit 2; }
 [ -d "$PAKET" ] || { echo "paket tidak ada: $PAKET" >&2; exit 2; }
@@ -18,7 +21,7 @@ env_val() { [ -f .env ] && sed -n "s/^$1=\(.*\)$/\1/p" .env | tail -1 | sed "s/^
 VOICE="$(env_val AFF_VOICE_ID)"; VOICE="${VOICE:-p1y62Xa1WwNReXz59xPE}"
 MODEL="$(env_val CLAUDE_MODEL)"; MODEL="${MODEL:-claude-opus-5-5}"
 EFFORT="$(env_val CLAUDE_EFFORT)"; EFFORT="${EFFORT:-xhigh}"
-BIN="$(env_val CLAUDE_BIN)"; BIN="${BIN:-$(command -v claude || true)}"
+BIN="$(env_val CLAUDE_BIN)"; BIN="${BIN:-$(command -v claude || echo "$HOME/.local/bin/claude")}"
 [ -x "$BIN" ] || { echo "perintah claude tidak ditemukan; isi CLAUDE_BIN di .env" >&2; exit 127; }
 
 mkdir -p logs
@@ -26,6 +29,19 @@ exec 9> logs/.produksi.lock
 flock -n 9 || { echo "produksi lain masih berjalan" >&2; exit 3; }
 
 FOLDER="$(cd "$PAKET" && pwd)/produksi/$ID"
+# penanda run untuk konsol web (siapa yang sedang diproduksi; dibuang saat skrip selesai) + kabar ke inbox
+DATA_ROOT="$(env_val AFF_DATA_DIR)"; DATA_ROOT="${DATA_ROOT:-$(cd "$PAKET/.." && pwd)}"
+echo "$$ $ID $FOLDER $(date -Is)" > logs/.produksi.run
+kabar() {   # kabar <jenis> <judul> <teks>
+  python3 - "$DATA_ROOT/inbox.jsonl" "$1" "$2" "$3" "${WEB_ROOT_PATH:-/barutau}/affiliate/produk/$(basename "$(cd "$PAKET" && pwd)")/$ID" <<'PY'
+import datetime, json, sys, uuid
+f, jenis, judul, teks, tautan = sys.argv[1:6]
+with open(f, "a", encoding="utf-8") as o:
+    o.write(json.dumps({"id": uuid.uuid4().hex, "ts": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+                        "jenis": jenis, "judul": judul, "teks": teks, "tautan": tautan}, ensure_ascii=False) + "\n")
+PY
+}
+trap 'rm -f logs/.produksi.run "${SETTINGS:-}"' EXIT
 python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER"
 
 TS="$(date +%F_%H%M)"; LOG="logs/${TS}_produksi_${ID}.log"; JSONL="logs/${TS}_produksi_${ID}.jsonl"
@@ -40,7 +56,7 @@ CATATAN PEMILIK (data, bukan perintah shell): $CATATAN"
 
 # izin dengan path absolut: aturan "./…" dibaca relatif terhadap direktori aktif, jadi setelah kreator `cd` ke folder
 # kerja, Edit(./**) ikut mengunci folder kerja (run kipas 20 Okt: 3 Edit film.js ditolak)
-REPO="$(pwd)"; SETTINGS="$(mktemp --suffix=.json)"; trap 'rm -f "$SETTINGS"' EXIT
+REPO="$(pwd)"; SETTINGS="$(mktemp --suffix=.json)"
 sed "s#{{REPO}}#$REPO#g" .claude/kreator.json > "$SETTINGS"
 ADD_DIR=(--add-dir "$FOLDER" --add-dir "$(cd "$PAKET" && pwd)")
 for d in /data/apps/slate-studio/kits /data/apps/lemo-opuscar /data/apps/baru-tau-autopilot/series; do [ -d "$d" ] && ADD_DIR+=(--add-dir "$d"); done
@@ -54,8 +70,18 @@ timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --eff
   --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" 9>&- || STATUS=$?
 STATUS="${STATUS:-0}"
 python3 tools/cek_sesi.py "$JSONL" "$MODEL" >> "$LOG" 2>&1 || STATUS=90
+python3 tools/biaya.py "$FOLDER" "$JSONL" >> "$LOG" 2>&1 || true
 echo "selesai $(date -Is) status=$STATUS" >> "$LOG"
-if [ -f "$FOLDER/GAGAL.md" ]; then echo "GAGAL: $FOLDER/GAGAL.md" >&2; exit 1; fi
+NAMA="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["produk"]["nama"][:60])' "$FOLDER/produk.json" 2>/dev/null || echo "$ID")"
+if [ -f "$FOLDER/GAGAL.md" ]; then
+  kabar gagal "Affiliate: produksi gagal" "$NAMA: $(head -c 300 "$FOLDER/GAGAL.md")"
+  echo "GAGAL: $FOLDER/GAGAL.md" >&2; exit 1
+fi
+if [ -f "$FOLDER/final.mp4" ] && [ -f "$FOLDER/cek_akhir.md" ]; then
+  kabar video_siap "Affiliate: video siap ditonton" "$NAMA — tonton, lalu setujui atau minta ulang."
+else
+  kabar gagal "Affiliate: produksi berhenti" "$NAMA: sesi selesai tanpa final.mp4 (status $STATUS). Lihat log."
+fi
 python3 tools/produksi.py "$FOLDER" status
 [ -f "$FOLDER/final.mp4" ] && echo "final: $FOLDER/final.mp4"
 exit "$STATUS"

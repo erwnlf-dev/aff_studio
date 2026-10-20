@@ -36,6 +36,7 @@ sumber:
   R-SHORTS-BENCH: "Panduan pihak ketiga Shorts (subscribr.ai, contentstudio.io, socialmediaexaminer.com): tidak ada ambang resmi; bandingkan dengan video sendiri"
   R-ELEVEN: "ElevenLabs docs 'Prompting Eleven v3': stability = preset Creative/Natural/Robust; v2 punya stability/similarity/style/speed kontinu"
   TEKNIS: "Alasan teknis render/encode (dijelaskan di doc 12 §5)"
+  R-SHOPEE-VIDEO: "Pusat Bantuan Shopee (label AI wajib untuk narasi AI, klaim harga, pelanggaran, tag produk, keranjang kiri bawah); doc 14"
   R-PLAYHEAD: "Playhead, 19 video viral TikTok Shop (Mei–Sep 2026): produk terlihat median 0,07 s, bukti median 2,73 s, tanpa wajah median 13,5 s (tryplayhead.com/blog/tiktok-shop-hooks; doc 13 §4)"
   VM-PLATFORMS: "/data/apps/video-maker/config/platforms.json: zona aman px per platform (belum diverifikasi ke platform; doc 13 §5)"
   DATA-2026-10-19: "Paket data pemilik affiliate_pipeline_data_2026-10-19.zip (9 produk shortlist); temuan di docs/TODO.md §3"
@@ -383,11 +384,11 @@ parameter:
     sumber: [BT-BASELINE]
   zona_aman.shopee_video.bawah_px:
     status: default
-    nilai: 320
-    rentang: [300, 640]
+    nilai: 620
+    rentang: [300, 720]
     satuan: px dari bawah
-    alasan: "Platform fase 1. BELUM DIUKUR: sementara memakai angka TikTok dari video-maker platforms.json. Ganti setelah screenshot UI Shopee Video (TODO §5)."
-    sumber: [VM-PLATFORMS]
+    alasan: "Platform fase 1. Angka resmi tidak ada; yang resmi hanya keranjang oranye di kiri bawah (doc 14 §2). Proksi TikTok pihak ketiga 480–707 px. Sementara 620 sampai pemilik mengirim screenshot pemutaran Shopee Video untuk diukur."
+    sumber: [R-SHOPEE-VIDEO]
   zona_aman.atas_px:
     status: default
     nilai: 150
