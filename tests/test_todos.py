@@ -127,6 +127,28 @@ class Produksi(unittest.TestCase):
         self.assertFalse((self.folder / "vo.json").exists())
         self.assertTrue((self.folder / "produk.json").exists())
 
+    def test_platform_tujuan(self):
+        """Platform tujuan dipilih saat Produksi: tercatat di produksi.json, bertahan saat run ulang tanpa pilihan, dan
+        menentukan cta.tempat yang divalidasi `naskah` dan platform paket unggah bawaan."""
+        m = json.loads((self.folder / "produksi.json").read_text())
+        self.assertEqual((m["platform"], m["cta_tempat"]), ("shopee_video", "keranjang oranye"))
+        (self.folder / "naskah.json").unlink()
+        produksi.main(["init", "--paket", str(self.paket), "--produk", fixture.PRODUK_OK, "--folder", str(self.folder),
+                       "--platform", "threads"])
+        m = json.loads((self.folder / "produksi.json").read_text())
+        self.assertEqual((m["platform"], m["cta_tempat"]), ("threads", "link"))
+        self.assertEqual(json.loads((self.folder / "naskah.json").read_text())["cta_layar"], "cek link")
+        produksi.main(["init", "--paket", str(self.paket), "--produk", fixture.PRODUK_OK, "--folder", str(self.folder)])
+        self.assertEqual(produksi.platform_folder(self.folder), "threads")            # run ulang: tetap
+        dipanggil = []
+        asli = produksi.jalan
+        produksi.jalan = lambda args, **kw: dipanggil.append([str(x) for x in args])
+        try:
+            produksi.main([str(self.folder), "naskah"])
+        finally:
+            produksi.jalan = asli
+        self.assertIn("cta.tempat=link", dipanggil[0])
+
     def test_berjalan_butuh_kunci(self):
         """Penanda run yang tertinggal (SIGKILL/OOM/reboot) bukan produksi berjalan; yang menentukan flock."""
         import fcntl

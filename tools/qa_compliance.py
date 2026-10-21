@@ -114,8 +114,12 @@ def cmd_video(folder, engine):
     lolos = not gagal
     # CTA ke keranjang (doc 15 §2): peringatan, bukan GAGAL (video lama dengan VO "cek di link" tetap bisa disetujui)
     peringatan = []
-    if not any("keranjang" in f["teks"].lower() for f in frames if f["t"] >= dur - 4.0):
-        peringatan.append("CTA: kata 'keranjang' tidak terbaca di 4 detik terakhir (Shopee Video: cek keranjang oranye)")
+    try:
+        platform = json.loads((folder / "produksi.json").read_text(encoding="utf-8")).get("platform") or "shopee_video"
+    except (OSError, ValueError):
+        platform = "shopee_video"
+    if platform != "threads" and not any("keranjang" in f["teks"].lower() for f in frames if f["t"] >= dur - 4.0):
+        peringatan.append("CTA: kata 'keranjang' tidak terbaca di 4 detik terakhir (%s: cek keranjang)" % platform)
     hasil = {"lolos": lolos, "gagal": gagal, "periksa_angka": periksa, "peringatan": peringatan, "frame": len(frames),
              "jarak_s": JARAK, "rinci": frames}
     (folder / "qa_compliance.json").write_text(json.dumps(hasil, ensure_ascii=False, indent=1), encoding="utf-8")
