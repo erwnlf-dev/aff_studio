@@ -6,7 +6,7 @@
 //   - tangan + lengan, cap karet, segel bulat, transisi (wipe, iris), loop ke frame 0,
 //   - easing dan pose (pop, kf, squash, cam).
 // Semua murni fungsi dari t (kontrak render Slate). Diambil dari examples/aff001-keset.
-import { PAL, shape, ink, ellipse, rect, rrect, star, text, fit, measure, clamp, lerp, seg, ss, eio, back, TAU } from './toon.js';
+import { PAL, shape, ink, ellipse, rect, rrect, star, text, fit, measure, clamp, lerp, seg, ss, eio, back, TAU, arrow } from './toon.js';
 import { drawHand } from './chars.js';
 
 export const W = 1080, H = 1920, FPS = 24;
@@ -143,6 +143,17 @@ export function disclosure(ctx, teks = 'Link afiliasi') {
   shape(ctx, ellipse(w - 30, 28, 7, 7, 14), { fill: PAL.kraftL, line: 2.6, seed: 981, off: [0, 0] });
   text(ctx, teks, 20, 40, { font, fill: PAL.ink });
   ctx.restore();
+}
+
+// ------------------------------------------------------------ CTA: panah ke keranjang
+// Shopee Video menaruh keranjang oranye produk di kiri bawah (doc 14 §2, doc 15 §2); TikTok Shop keranjang kuning di
+// tempat yang sama. Panah tinta tebal menggambar dirinya mulai t0 (0,45 s) lalu memantul tiap ketukan, dari bawah
+// caption (dasar y = 1.470) turun ke keranjang. Panggil SETELAH caption(ctx, t) supaya tidak tertutup slab.
+export function panahKeranjang(ctx, t, t0, o = {}) {
+  const u = ss(seg(t, t0, t0 + 0.45)); if (u <= 0) return;
+  const bpm = o.bpm ?? 112, bob = ((t - t0) * bpm / 60) % 1;
+  arrow(ctx, o.dari ?? [430, 1530], o.ke ?? [140, 1700], { u, bob, bend: o.bend ?? 0.28, w: 13, head: 66,
+    fill: o.warna ?? PAL.coral, seed: 990 });
 }
 
 // ------------------------------------------------------------ caption (slab kertas, ≤ 7 kata, 1 kata disorot)

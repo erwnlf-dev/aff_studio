@@ -7,7 +7,7 @@ Standarnya **di atas video affiliate kebanyakan**. Uji template 20 Oktober yang 
 Baca dulu, sepenuhnya:
 1. `series/BIBLE.md`: aturan kreatif affiliate (mewarisi BIBLE Baru Tau).
 2. `series/BASELINE.md`: 20 butir wajib.
-3. `docs/13-acuan-kualitas-video.md`: acuan dan aturan yang bertentangan.
+3. `docs/13-acuan-kualitas-video.md`: acuan dan aturan yang bertentangan. `docs/15-riset-pasar-id.md`: apa yang bekerja di pasar Indonesia (CTA keranjang, hook, variasi).
 4. `examples/aff001-keset/`: video yang sudah disetujui. Tirukan **tingkat kualitas** dan cara kerjanya (brief, ledger, cek akhir), bukan isinya.
 5. `/data/apps/baru-tau-autopilot/series/BIBLE.md`: bagian "Gerak dalam angka", "Suara", dan "TERLARANG".
 
@@ -21,7 +21,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
 |---|---|
 | `init` | Sudah dijalankan skrip: `produk.json`, `data_layar.json`, `foto_sheet.jpg`, kerangka `naskah.json`/`brief.md`/`film.js`/`score.py` |
 | `cutout --foto N --nama X [--crop x0,y0,x1,y1] [--model u2net]` | Cutout produk (rembg; `u2net` kadang lebih bersih untuk produk gelap) → `cutout/X.png` + `aset/foto.js` + `cutout_sheet.jpg` |
-| `naskah` | Validasi `naskah.json` (urutan beat, sumber klaim, panjang kalimat) → `naskah.txt`, `scenes.json`, `isi.json` |
+| `naskah` | Validasi `naskah.json` (urutan beat, sumber klaim, panjang kalimat, CTA ke keranjang, hook ≤ 8 kata, tanpa "Kenalin", variasi template + hook_tipe) → `naskah.txt`, `scenes.json`, `isi.json` |
 | `vo --voice <id>` | Voiceover sekali, lalu ukur jendela sunyi → `kata_koreksi.json` |
 | `kata` | `const KATA = …` untuk `film.js` + daftar kata berindeks dan frame-nya + jendela sunyi |
 | `audit` | Audit numerik (kontrak render, CUES ±1 frame, hit partitur +1 frame, musik kontinu: 0 lubang dan rentang level ≤ 12 dB) |
@@ -36,7 +36,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
 **Kit:**
 - **`engine/aff.js`** (`kits/affiliate/aff.js`). Fungsinya:
   - `muatFoto`, `produk`: cutout dengan garis tinta, bayangan lembut dua lapis, pencahayaan ulang, dan warna ambien,
-  - `disclosure`, `buatCaption`, `pelat`, `teksKunci`, `labelIlustrasi`,
+  - `disclosure`, `buatCaption`, `pelat`, `teksKunci`, `labelIlustrasi`, `panahKeranjang` (CTA: panah ke keranjang kiri bawah),
   - `tanganDi`, `capKaret`, `cetakCap`, `segelRating`,
   - `wipe`, `irisMasuk`, `denganLoop`,
   - `pop`, `kf`, `squash`, `cam`.
@@ -66,11 +66,14 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
    - **Panjang dan bentuk:**
      - 15–25 detik: sekitar 35–45 kata terucap (angka ditulis dengan huruf),
      - kalimat ≤ 12 kata, satu kata ganti "kamu".
-   - **Urutan dan isi:**
-     - urutan beat sesuai `isi.json` (bawaan: hook, masalah, produk, fitur, fitur, bukti, cta),
-     - hook = pertanyaan atau demo dengan nama benda di 5 kata pertama,
-     - CTA ke tempat link ("cek di link"),
-     - jeda dramatis "…" tepat sebelum produk masuk (di situ nanti hening).
+   - **Struktur (bervariasi, doc 15 §2–3):**
+     - `naskah.json` memuat `"template"` (`masalah_solusi`: hook, masalah, produk, fitur, fitur, bukti, cta; atau `fitur_cepat`: hook, produk, fitur, fitur, fitur, bukti, cta) dan `"hook_tipe"` (`masalah`, `hasil`, `nilai`, `demo`, `angka`),
+     - pasangan template + hook_tipe **tidak boleh sama** dengan 2 video terakhir di paket yang sama (`naskah` memeriksanya); Shopee menilai konten repetitif tidak valid,
+     - pilih yang paling cocok dengan produk: demo/hasil untuk benda yang manfaatnya terlihat, masalah untuk situasi yang dikenal (tidak untuk kategori diatur), nilai tanpa angka harga ("worth it nggak sih…"), angka hanya dari `data_layar.json`.
+   - **Hook dan pembuka:**
+     - kalimat pertama hook ≤ 8 kata: masalah konkret, hasil, atau nilai, dengan nama benda; bukan salam, bukan pola "<benda> ini, …?" yang sama setiap video,
+     - **tanpa "Kenalin/perkenalkan"**: produk masuk dengan nama atau hasilnya; jeda dramatis "…" tetap tepat sebelum produk masuk (di situ nanti hening).
+   - **CTA ke keranjang, bukan link** (`cta.tempat`, Shopee Video: "keranjang oranye"): diucapkan dan ditulis di `cta_layar`, misalnya "cek keranjang oranye ya" atau "cek harganya di keranjang oranye". Kata "link"/"bio" ditolak (tautan keluar aplikasi dilarang di Shopee Video).
    - **Klaim:**
      - setiap beat punya `sumber` (`fitur:N`, `nama`, `rating`, `ulasan`, `terjual`, `varian`, `masalah`, `ajakan`),
      - klaim hanya dari `key_features` dan `data_layar.json`: tanpa waktu/angka karangan, tanpa harga coret atau diskon, tanpa "termurah",
@@ -101,6 +104,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
      - demonstrasi fitur **digambar**, dengan `labelIlustrasi` di demo,
      - teks kunci ≤ 3 kata.
    - **Wajib di setiap frame:** `disclosure(ctx)` dan `caption(ctx, t)` (dari `buatCaption`), lalu `paperFinish`.
+   - **CTA:** `panahKeranjang(ctx, t, <cue kata "keranjang">)` di adegan CTA, dipanggil **setelah** `caption`, ujungnya ke keranjang kiri bawah; teks kunci CTA menyebut keranjang.
    - **Transisi:** potong keras atau dari konten (`wipe`, `irisMasuk`). **Frame tepat setelah transisi sudah berisi subjek**, termasuk aktor yang masuk; tidak ada layar kosong.
    - **Zona aman:** teks dan aksi di atas caption (dasar caption y = 1.470), di bawah y = 150, kanan ≤ 940. Shopee Video: keranjang oranye di kiri bawah (doc 14 §2), jadi aksi penting di atas y = 1.300.
 7. **Critic loop.**
@@ -134,7 +138,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
     - peringatan tersisa,
     - PERLU DICEK telinga (merek/kata asing).
 12. **Teks post → `teks_post.txt`.**
-    - **Isi:** 2–3 baris pendek (≤ 300 karakter), klaim sama dengan video, baris terakhir `(link afiliasi)`.
+    - **Isi:** 2–3 baris pendek (≤ 300 karakter), klaim sama dengan video, ajakan ke keranjang (bukan "link"), baris terakhir `(link afiliasi)`.
     - **Suara manusia, bukan copywriter:** huruf kecil boleh; tanpa "Fun fact", tanpa kata baku, tanpa tanda pisah panjang.
 
 ## Batasan tetap

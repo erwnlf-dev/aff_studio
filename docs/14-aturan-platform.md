@@ -10,6 +10,8 @@ Hasil verifikasi TODO §5. **[RESMI]** = halaman resmi Shopee/TikTok/Meta; **[RE
 - Video kita memakai VO ElevenLabs, jadi **toggle ini wajib dinyalakan di setiap unggahan** (daftar periksa di halaman Unggah konsol).
 - Sumber: https://help.shopee.co.id/portal/10/article/197077 [RESMI]
 
+**Komisi konten berlabel AI (doc 15 §4):** di Shopee MY, label AI mematikan Komisi Shopee (hanya AMS/XTRA), dan di SG konten AI tidak dihitung untuk level kreator. Versi Indonesia belum ditemukan; uji satu video berlabel sebelum produksi diperbanyak.
+
 **Konsekuensi label AI:** kriteria Top Creator mengecualikan repost "termasuk video AI generated" dan menyarankan suara serta wajah kreator sendiri. https://help.shopee.co.id/portal/4/article/201359 [RESMI]. Ini ikut menimbang pemilihan suara (EXP-04) dan opsi rekaman suara pemilik.
 
 **Harga dan promo.**
@@ -51,6 +53,8 @@ Tidak ditemukan kewajiban hashtag #ad di Shopee Video. Label "Link afiliasi" di 
 **Dipakai sementara:**
 - Registry `zona_aman.shopee_video.bawah_px` = 620: keranjang dan caption aplikasi di kiri bawah.
 - Video yang sudah jadi menaruh dasar caption di y = 1.470 (450 px dari bawah). Keranjang di kiri bawah bisa menutupi sebagian caption kiri.
+
+**CTA:** karena produk ada di keranjang oranye dan tautan keluar aplikasi dilarang, CTA video adalah "cek keranjang oranye", ditambah `panahKeranjang` ke kiri bawah (`cta.tempat`, doc 15 §2).
 
 **Tindakan [pemilik]:** kirim satu screenshot pemutaran Shopee Video dengan produk tertaut (HP, layar penuh). Dari situ angka pasti diukur, lalu `buatCaption` (kit) dan BIBLE disesuaikan. Sampai ada screenshot, kreator diminta menjaga aksi penting di atas y = 1.300 (BIBLE).
 

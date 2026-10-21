@@ -167,7 +167,8 @@ def cmd_init(a):
             tujuan.write_text(teks, encoding="utf-8")
     if not (folder / "naskah.json").exists():
         cover = next(i for i, f in enumerate(produk["foto"]) if f["cover"])
-        naskah = {"product_id": produk["id"], "hook_layar": "", "cta_layar": "",
+        naskah = {"product_id": produk["id"], "template": params["template.default"], "hook_tipe": "",
+                  "hook_layar": "", "cta_layar": "cek %s" % params["cta.tempat"],
                   "beats": [{"tipe": b, "vo": "", "teks_kunci": "", "foto": cover, "sumber": []} for b in urutan]}
         (folder / "naskah.json").write_text(json.dumps(naskah, ensure_ascii=False, indent=1), encoding="utf-8")
     (folder / "produksi.json").write_text(json.dumps({"paket": str(Path(a.paket).resolve()), "produk": produk["id"],

@@ -50,7 +50,8 @@ class Susun(Dasar):
         self.assertNotIn("*", txt)
         self.assertEqual(len(scenes), 7)
         self.assertEqual(isi["beats"][0]["teks_kunci"], "Keset ini nyerap air?")     # hook_layar
-        self.assertEqual(isi["beats"][-1]["teks_kunci"], "Cek motif di link")        # cta_layar
+        self.assertEqual(isi["beats"][-1]["teks_kunci"], "Cek keranjang oranye")     # cta_layar
+        self.assertEqual((isi["template"], isi["hook_tipe"], isi["cta_tempat"]), ("masalah_solusi", "demo", "keranjang oranye"))
         self.assertEqual(isi["disclosure"], "Link afiliasi")
         self.assertEqual(isi["variant_id"], ringkas["variant_id"])
         self.assertTrue(foto["foto"][0]["src"].startswith("data:image/jpeg;base64,"))
@@ -127,6 +128,79 @@ class Tolak(Dasar):
 
     def test_hook_layar_terlalu_panjang(self):
         self.gagal(lambda n: n.update(hook_layar="satu dua tiga empat lima enam"), pesan="hook_layar")
+
+    # ---- aturan pasar Indonesia (docs/15)
+    def test_cta_harus_ke_keranjang(self):
+        def ubah(n):
+            n["cta_layar"] = "Cek di link"
+            n["beats"][-1]["vo"] = "Warnanya ada dua, *cek di link* ya."
+        self.gagal(ubah, pesan="keranjang oranye")
+
+    def test_cta_link_ditolak_walau_ada_keranjang(self):
+        self.gagal(lambda n: n["beats"][-1].update(vo="Cek *keranjang oranye* atau link di bio."), pesan="link/bio")
+
+    def test_cta_tiktok_keranjang_kuning(self):
+        def ubah(n):
+            n["cta_layar"] = "Cek keranjang kuning"
+            n["beats"][-1]["vo"] = "Warnanya ada dua, cek *keranjang kuning* ya."
+        n = copy.deepcopy(fixture.NASKAH_OK)
+        ubah(n)
+        self.assertEqual(self.susun(n, ov={"cta.tempat": "keranjang kuning"})[0]["cta_tempat"], "keranjang kuning")
+
+    def test_kenalin_ditolak(self):
+        self.gagal(lambda n: n["beats"][2].update(vo="Kenalin… keset contoh *serap air*."), pesan="Kenalin")
+
+    def test_hook_maks_8_kata(self):
+        self.gagal(lambda n: n["beats"][0].update(vo="Keset kamar mandi yang ini ternyata bisa *nyerap air*?"), pesan="hook 9 kata")
+
+    def test_hook_tipe_wajib(self):
+        self.gagal(lambda n: n.pop("hook_tipe"), pesan="hook_tipe")
+
+    def test_hook_masalah_kategori_diatur(self):
+        n = copy.deepcopy(fixture.NASKAH_OK)
+        n["hook_tipe"] = "masalah"
+        n["product_id"] = fixture.PRODUK_DIATUR
+        for b in n["beats"]:
+            b["foto"] = 0
+        with self.assertRaises(sf.NaskahError) as c:
+            self.susun(n, pid=fixture.PRODUK_DIATUR)
+        self.assertIn("kategori diatur", str(c.exception))
+
+    def test_variasi_template_dan_hook(self):
+        saudara = [("111", ("masalah_solusi", "demo")), ("222", ("fitur_cepat", "hasil"))]
+        snap = cek_params.snapshot(self.reg, {})
+        with self.assertRaises(sf.NaskahError) as c:
+            sf.susun(self.produk(), copy.deepcopy(fixture.NASKAH_OK), snap, None, saudara)
+        self.assertIn("sama dengan 111", str(c.exception))
+        n = copy.deepcopy(fixture.NASKAH_OK)
+        n["hook_tipe"] = "nilai"                                    # pasangan baru: lolos
+        self.assertEqual(sf.susun(self.produk(), n, snap, None, saudara)[0]["hook_tipe"], "nilai")
+        lama = [("333", ("masalah_solusi", "angka"))] * 2 + [("111", ("masalah_solusi", "demo"))]
+        sf.susun(self.produk(), copy.deepcopy(fixture.NASKAH_OK), snap, None, lama)   # di luar 2 video terakhir
+
+    def test_template_fitur_cepat_dipilih_naskah(self):
+        n = copy.deepcopy(fixture.NASKAH_OK)
+        n["template"] = "fitur_cepat"
+        with self.assertRaises(sf.NaskahError) as c:                # urutan masalah_solusi ≠ fitur_cepat
+            self.susun(n)
+        self.assertIn("template fitur_cepat", str(c.exception))
+        n["template"] = "price_reveal"
+        with self.assertRaises(sf.NaskahError) as c:
+            self.susun(n)
+        self.assertIn("tidak boleh", str(c.exception))
+
+    def test_vo_lama_hanya_peringatan(self):
+        """Run ulang dengan VO lama ("cek di link", tanpa hook_tipe) tidak macet: pelanggaran jadi peringatan."""
+        n = copy.deepcopy(fixture.NASKAH_OK)
+        n.pop("hook_tipe")
+        n["cta_layar"] = "Cek di link"
+        n["beats"][-1]["vo"] = "Warnanya ada dua, *cek di link* ya."
+        teks = " ".join(b["vo"].replace("*", "") for b in n["beats"]).split()
+        kata = [{"teks": w, "mulai": i * 0.4, "selesai": i * 0.4 + 0.3} for i, w in enumerate(teks)]
+        per = []
+        isi = sf.susun(self.produk(), n, cek_params.snapshot(self.reg, {}), {"durasi": kata[-1]["selesai"] + 0.5, "kata": kata}, (), per)[0]
+        self.assertEqual(isi["timing"], "vo")
+        self.assertTrue(any("keranjang oranye" in w for w in per) and any("hook_tipe" in w for w in per), per)
 
     def test_foto_di_luar_daftar(self):
         self.gagal(lambda n: n["beats"][0].update(foto=9), pesan="foto")
