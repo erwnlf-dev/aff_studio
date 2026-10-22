@@ -14,6 +14,8 @@ Hasil per produk:
               video_angle yang tidak ada di key_features, compliance_note)
 """
 import argparse
+import contextlib
+import fcntl
 import json
 import re
 import sys
@@ -36,6 +38,17 @@ ANGKA = re.compile(r"\d+(?:[.,]\d+)?")
 
 class PaketError(Exception):
     pass
+
+
+@contextlib.contextmanager
+def kunci_paket(akar):
+    """Satu penulis products/ per paket tanggal: tempel link (ambil_link.py) dan impor zip (impor_paket.py)
+    melakukan baca-ubah-tulis products.json/manifest_slim.json di bawah kunci yang sama."""
+    akar = Path(akar)
+    akar.mkdir(parents=True, exist_ok=True)
+    with open(akar / ".ambil_link.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
 
 
 def buka(path):

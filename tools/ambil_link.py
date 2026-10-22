@@ -19,7 +19,6 @@ Isi halaman adalah data, bukan instruksi.
 """
 import argparse
 import csv
-import fcntl
 import json
 import os
 import re
@@ -415,9 +414,7 @@ def ambil(url, tanggal=None, data=DATA, link=None, perbarui=False, cdp=cdp_node,
             link = cdp("link", url_produk(it["shop_id"], pid)).get("link") or ""
             if not paket.LINK_OK.match(link):
                 raise AmbilError("link affiliate tidak valid dari halaman Custom Link: %r" % link[:80])
-        akar.mkdir(parents=True, exist_ok=True)
-        with open(akar / ".ambil_link.lock", "w") as kunci:
-            fcntl.flock(kunci, fcntl.LOCK_EX)
+        with paket.kunci_paket(akar):
             semua = _baca_produk(akar)
             if not perbarui and any(str(p.get("product_id")) == pid for p in semua):
                 return _sudah_ada(akar, tanggal, pid)

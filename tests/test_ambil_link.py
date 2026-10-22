@@ -180,6 +180,27 @@ class Ambil(unittest.TestCase):
         self.assertEqual(hasil["2000000001"], [])
         self.assertEqual(hasil[fixture.PRODUK_OK], [])
 
+    def test_impor_zip_tanggal_sama_menggabung_produk(self):
+        """Review R3 #7: tempel link dulu, lalu impor zip tanggal yang sama: produk zip ditambahkan (tidak dibuang),
+        produk tempel link tetap, rank zip digeser ke belakang; impor ulang tidak menggandakan."""
+        import impor_paket
+        self.ambil(CdpPalsu(), tanggal="2026-10-19")
+        sumber = fixture.buat(Path(self.tmp.name) / "zipsrc")
+        (sumber / "products" / "shortlist.csv").write_text("rank,product_id,name\n1,%s,Keset\n" % fixture.PRODUK_OK)
+        z = fixture.zip_dari(sumber, Path(self.tmp.name) / "affiliate_pipeline_data_2026-10-19.zip")
+        r = impor_paket.impor(z, data=self.data)
+        akar = self.data / "2026-10-19"
+        semua = json.loads((akar / "products/products.json").read_text())
+        self.assertEqual([str(p["product_id"]) for p in semua][0], "2000000001")
+        self.assertEqual(len(semua), 4)
+        self.assertEqual([p["rank"] for p in semua], [1, 2, 3, 4])
+        slim = {str(x["product_id"]) for x in json.loads((akar / "products/manifest_slim.json").read_text())}
+        self.assertEqual(len(slim), 4)
+        self.assertIn(fixture.PRODUK_OK, (akar / "products/shortlist.csv").read_text())
+        self.assertEqual(r["produk"], 4)
+        impor_paket.impor(z, data=self.data)
+        self.assertEqual(len(json.loads((akar / "products/products.json").read_text())), 4)
+
     def test_produk_sudah_ada_tidak_membuka_browser(self):
         self.ambil(CdpPalsu())
         cdp = CdpPalsu()
