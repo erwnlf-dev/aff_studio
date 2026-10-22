@@ -5,13 +5,19 @@
     python3 tools/impor_paket.py impor <zip> [--data …] [--unduh-gambar]                         → <data>/<tanggal>/ (JSON)
 
 Nama folder tujuan = tanggal di nama zip (affiliate_pipeline_data_2026-10-19.zip → 2026-10-19); paket yang sudah ada
-tidak ditimpa (berkas lama dipertahankan, hanya yang belum ada yang ditambahkan). Anggota zip di luar folder tujuan
+tidak ditimpa (berkas lama dipertahankan, hanya yang belum ada yang ditambahkan). Daftar produk (products.json,
+manifest_slim.json, shortlist.csv) yang sudah ada, mis. dari "Tempel link" untuk tanggal yang sama, DIGABUNG: produk zip
+yang belum ada ditambahkan di belakang (rank setelah produk lama), produk yang sudah ada tidak diubah. Impor memegang
+kunci paket yang sama dengan tempel link (paket.kunci_paket). Anggota zip di luar folder tujuan
 ditolak. Kalau foto produk tidak ikut di zip, --unduh-gambar menjalankan fetch_images_zip.py milik paket itu (gambar
 dari CDN Shopee, jeda 1,5–3,5 s per file) lalu membongkar hasilnya ke products/<id>/images/. Tanpa --unduh-gambar,
 produk tanpa foto ditolak validator (tools/paket.py).
 """
 import argparse
+import csv
+import io
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -47,8 +53,88 @@ def daftar(data=DATA, cari=CARI):
     return out
 
 
+DAFTAR = ("products/products.json", "products/manifest_slim.json", "products/shortlist.csv")
+
+
+def _daftar_json(teks, nama):
+    try:
+        d = json.loads(teks)
+    except ValueError as e:
+        raise paket.PaketError("%s tidak terbaca: %s" % (nama, e))
+    if not isinstance(d, list) or not all(isinstance(x, dict) for x in d):
+        raise paket.PaketError("%s harus daftar objek produk" % nama)
+    return d
+
+
+def _tulis_atomik(path, teks):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(teks, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _rank(p):
+    r = p.get("rank")
+    return r if isinstance(r, int) and not isinstance(r, bool) else None
+
+
+def _csv(teks, nama):
+    try:
+        r = csv.DictReader(io.StringIO(teks))
+        return list(r.fieldnames or []), list(r)
+    except csv.Error as e:
+        raise paket.PaketError("%s tidak terbaca: %s" % (nama, e))
+
+
+def gabung_daftar(tujuan, z):
+    """products.json/manifest_slim.json/shortlist.csv yang sudah ada + produk zip yang belum ada. Rank produk zip
+    digeser ke belakang produk lama (urutan zip dipertahankan). SEMUA berkas (paket dan zip) dibaca dan diperiksa
+    dulu; baru setelah itu ditulis, masing-masing atomik (berkas rusak = tidak ada yang berubah). Mengembalikan jumlah
+    produk yang ditambahkan."""
+    prod = Path(tujuan) / "products"
+    nama = set(z.namelist())
+    lama = _daftar_json((prod / "products.json").read_text(encoding="utf-8"), "products.json paket")
+    zip_ = _daftar_json(z.read("products/products.json").decode("utf-8"), "products.json zip")
+    sj, sl = prod / "manifest_slim.json", prod / "shortlist.csv"
+    slim = slim_zip = isi = baris_zip = None
+    if "products/manifest_slim.json" in nama:
+        slim_zip = _daftar_json(z.read("products/manifest_slim.json").decode("utf-8"), "manifest_slim.json zip")
+        slim = _daftar_json(sj.read_text(encoding="utf-8"), "manifest_slim.json paket") if sj.exists() else []
+    if "products/shortlist.csv" in nama:
+        kolom_zip, baris_zip = _csv(z.read("products/shortlist.csv").decode("utf-8"), "shortlist.csv zip")
+        kolom, isi = _csv(sl.read_text(encoding="utf-8"), "shortlist.csv paket") if sl.exists() else (kolom_zip, [])
+        kolom = kolom or kolom_zip
+
+    ada = {str(p.get("product_id")) for p in lama}
+    geser = max([_rank(p) or 0 for p in lama] + [0])
+    tambah = [p for p in sorted(zip_, key=lambda x: (_rank(x) is None, _rank(x) or 0))
+              if str(p.get("product_id")) not in ada]
+    rank = {}
+    for n, p in enumerate(tambah, 1):
+        p["rank"] = rank[str(p.get("product_id"))] = geser + n
+    tulis = [(prod / "products.json", json.dumps(lama + tambah, ensure_ascii=False, indent=2) + "\n")]
+    if slim_zip is not None:
+        slim_zip = [dict(s, rank=rank[str(s.get("product_id"))]) if "rank" in s else s
+                    for s in slim_zip if str(s.get("product_id")) in rank]
+        slim = [s for s in slim if str(s.get("product_id")) not in rank]     # sisa impor yang terhenti: diganti
+        tulis.append((sj, json.dumps(slim + slim_zip, ensure_ascii=False, indent=2) + "\n"))
+    if baris_zip is not None:
+        baris_zip = [dict(b, rank=rank[b["product_id"]]) if "rank" in b else b
+                     for b in baris_zip if b.get("product_id") in rank]
+        out = io.StringIO()
+        w = csv.DictWriter(out, fieldnames=kolom, extrasaction="ignore")
+        w.writeheader()
+        w.writerows([b for b in isi if b.get("product_id") not in rank] + baris_zip)
+        tulis.append((sl, out.getvalue()))
+    # products.json terakhir: kalau penulisan berhenti di tengah, impor ulang masih melihat produk zip sebagai
+    # belum ada lalu menulis ulang daftar pendamping dari awal (manifest/shortlist difilter per product_id baru)
+    for path, teks in tulis[1:] + tulis[:1]:
+        _tulis_atomik(path, teks)
+    return len(tambah)
+
+
 def bongkar(zip_path, tujuan):
-    """Bongkar aman: anggota di luar tujuan ditolak; berkas yang sudah ada tidak ditimpa."""
+    """Bongkar aman: anggota di luar tujuan ditolak; berkas yang sudah ada tidak ditimpa, kecuali daftar produk
+    (DAFTAR) yang digabung. Pemanggil memegang paket.kunci_paket(tujuan)."""
     tujuan = Path(tujuan).resolve()
     baru = 0
     with zipfile.ZipFile(zip_path) as z:
@@ -56,8 +142,15 @@ def bongkar(zip_path, tujuan):
             t = (tujuan / m.filename).resolve()
             if not str(t).startswith(str(tujuan) + "/") and t != tujuan:
                 raise paket.PaketError("anggota zip di luar folder: %s" % m.filename)
+        if "products/products.json" in z.namelist() and (tujuan / "products" / "products.json").exists():
+            baru += gabung_daftar(tujuan, z)            # sebelum berkas lain, supaya galat bentuk tidak setengah jalan
+            lewati = set(DAFTAR)
+        else:
+            lewati = set()
         for m in z.infolist():
             t = tujuan / m.filename
+            if m.filename in lewati:
+                continue
             if m.is_dir():
                 t.mkdir(parents=True, exist_ok=True)
             elif not t.exists():
@@ -109,8 +202,8 @@ def unduh_gambar(tujuan):
 
 def impor(zip_path, data=DATA, unduh=False):
     tujuan = Path(data) / tanggal(zip_path)
-    tujuan.mkdir(parents=True, exist_ok=True)
-    baru = bongkar(zip_path, tujuan)
+    with paket.kunci_paket(tujuan):
+        baru = bongkar(zip_path, tujuan)
     if not (tujuan / "products" / "products.json").exists():
         raise paket.PaketError("zip tidak berisi products/products.json")
     gambar = 0

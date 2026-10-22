@@ -11,6 +11,7 @@ Repo ini mencontek pipeline Baru Tau di server ini (`/data/apps/baru-tau-autopil
 | `tools/produksi.py` | Satu pintu langkah produksi: init, cutout, naskah, vo, kata, audit, pratinjau, skor, render, sheet, status |
 | `tools/qa_compliance.py` | OCR (rapidocr, `.venv`): teks tercetak di foto penjual; disclosure/harga/angka di frame video final |
 | `tools/impor_paket.py` | Impor zip paket data (dipakai konsol) + unduh gambar bila tidak ikut di zip |
+| `tools/ambil_link.py`, `tools/shopee_cdp.mjs` | Tempel satu link produk Shopee → produk di paket `<tanggal>` (data halaman, foto, link affiliate lewat Custom Link; Chromium pemilik via CDP; dipakai konsol) |
 | `tools/biaya.py` | Log biaya per video → `biaya.json` |
 | `docs/14-aturan-platform.md` | Aturan Shopee Video / Affiliate / TikTok / Threads (label AI wajib, harga, tag produk, metrik) |
 | `tools/sunyi.py` | Ukur jendela sunyi `vo.mp3` → `kata_koreksi.json` (onset kata yang benar) |
@@ -41,6 +42,7 @@ Atau langkah demi langkah (`python3 tools/produksi.py -h`). Alat tingkat rendah 
 
 ```
 python3 tools/paket.py cek /data/apps/affiliate-data/2026-10-19
+python3 tools/ambil_link.py "https://shopee.co.id/<nama>-i.<shop>.<item>" --tanggal 2026-10-22
 python3 tools/siapkan_film.py --paket /data/apps/affiliate-data/2026-10-19 \
     --naskah /data/apps/affiliate-data/2026-10-19/naskah/<id>.json --keluar /tmp/film/<id>
 python3 tools/pratinjau.py /tmp/film/<id> --keluar /tmp/film/<id>/sheet.jpg

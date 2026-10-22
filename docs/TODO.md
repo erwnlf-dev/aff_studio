@@ -7,6 +7,7 @@ Per 20 Oktober 2026. Tanda **[pemilik]** berarti keputusan atau aksi pemilik; ta
 | Tahap | Siapa | Alat |
 |---|---|---|
 | Riset market, pilih produk, scrape data + gambar, buat link affiliate | pemilik | Claude in Chrome (`CONTEXT.md` di paket data) |
+| Satu produk dari link yang ditempel: data halaman, foto, link affiliate (Custom Link) | pemilik menempel link | `tools/ambil_link.py` lewat Chromium server (CDP), konsol "Tempel link Shopee" |
 | Data produk → naskah → VO → video → QA → antrean approval | aff_studio | Slate Studio (VO, render `film.js`, QA, mix) |
 | Approval naskah dan video | pemilik | konsol web (`web/modules/affiliate`, belum ada) |
 | Upload ke platform | pemilik | Claude in Chrome, dengan konfirmasi per batch |

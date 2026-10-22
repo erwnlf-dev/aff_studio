@@ -14,6 +14,8 @@ Hasil per produk:
               video_angle yang tidak ada di key_features, compliance_note)
 """
 import argparse
+import contextlib
+import fcntl
 import json
 import re
 import sys
@@ -36,6 +38,17 @@ ANGKA = re.compile(r"\d+(?:[.,]\d+)?")
 
 class PaketError(Exception):
     pass
+
+
+@contextlib.contextmanager
+def kunci_paket(akar):
+    """Satu penulis products/ per paket tanggal: tempel link (ambil_link.py) dan impor zip (impor_paket.py)
+    melakukan baca-ubah-tulis products.json/manifest_slim.json di bawah kunci yang sama."""
+    akar = Path(akar)
+    akar.mkdir(parents=True, exist_ok=True)
+    with open(akar / ".ambil_link.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
 
 
 def buka(path):
@@ -171,7 +184,13 @@ def muat(path, params=None, sekarang=None):
     slim = {}
     if slim_path.exists():
         slim = {str(x.get("product_id")): x for x in json.loads(slim_path.read_text(encoding="utf-8"))}
-    semua = sorted(semua, key=lambda x: (x.get("rank") is None, x.get("rank") or 0))
+    if not all(isinstance(x, dict) for x in semua):
+        raise PaketError("products/products.json harus berupa daftar objek produk")
+
+    def rank(x):                                        # rank bukan bilangan bulat (data tangan/rusak): di belakang
+        r = x.get("rank")
+        return (False, r) if isinstance(r, int) and not isinstance(r, bool) else (True, 0)
+    semua = sorted(semua, key=rank)
     return [normalisasi(akar, m, slim.get(str(m.get("product_id")), {}), params, sekarang) for m in semua]
 
 
