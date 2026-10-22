@@ -109,9 +109,10 @@ def foto_sheet(produk, tujuan):
 # run_produksi.sh di bawah kunci produksi; konsol web tidak mengarsipkan): GAGAL.md lama tidak boleh menutupi video baru,
 # dan final.mp4/qa_compliance.json lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap.
 HASIL_RUN = ("final.mp4", "final_sheet.jpg", "cek_akhir.md", "qa_compliance.json", "teks_post.txt", "status.json",
-             "biaya.json", "GAGAL.md", "teks_platform.json", "tayang.json", "telegram.json")
-# tayang.json/telegram.json (konsol): catatan posting Threads dan serah Telegram versi sebelumnya; konsol menolak Ulangi
-# selama post Threads masih aktif, jadi yang diarsipkan hanya catatan yang sudah selesai (gagal/dibatalkan).
+             "biaya.json", "GAGAL.md", "teks_platform.json", "telegram.json")
+# telegram.json (konsol): serah Telegram versi sebelumnya. Catatan posting konsol (tayang.json, tayang_tiktok.json,
+# tayang_riwayat.jsonl) TIDAK diarsipkan: run ulang tanpa naskah baru merender di job Slate yang sama (vo.json), jadi
+# catatan itu tetap milik job video ini; konsol membandingkan job_id-nya sendiri.
 
 
 def arsipkan_hasil(folder):

@@ -102,7 +102,8 @@ class Produksi(unittest.TestCase):
     def test_init_ulang_mengarsipkan_hasil_run_sebelumnya(self):
         """GAGAL.md lama tidak boleh menutupi video baru; final.mp4/qa_compliance.json lama tidak boleh terbaca sebagai
         hasil run baru. VO dan naskah tetap dipakai."""
-        for n in ("GAGAL.md", "final.mp4", "cek_akhir.md", "qa_compliance.json", "naskah.txt", "vo.json"):
+        for n in ("GAGAL.md", "final.mp4", "cek_akhir.md", "qa_compliance.json", "naskah.txt", "vo.json", "tayang.json",
+                  "tayang_tiktok.json", "tayang_riwayat.jsonl"):
             (self.folder / n).write_text("lama")
         (self.folder / "review.json").write_text(json.dumps({"status": "ulang"}))
         self.assertEqual(produksi.keadaan(self.folder), "ulang")
@@ -112,6 +113,8 @@ class Produksi(unittest.TestCase):
         self.assertEqual(len(arsip), 1)
         self.assertEqual(sorted(p.name for p in arsip[0].iterdir()), ["GAGAL.md", "cek_akhir.md", "final.mp4", "qa_compliance.json"])
         self.assertTrue((self.folder / "vo.json").exists() and (self.folder / "naskah.txt").exists())
+        for n in ("tayang.json", "tayang_tiktok.json", "tayang_riwayat.jsonl"):    # catatan posting milik job, tetap
+            self.assertTrue((self.folder / n).exists(), n)
         self.assertEqual(len(list(self.folder.glob("review_*.json"))), 1)
         (self.folder / "final.mp4").write_bytes(b"baru")
         (self.folder / "cek_akhir.md").write_text("ok")
