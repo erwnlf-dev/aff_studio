@@ -114,9 +114,13 @@ def angka_singkat(teks):
 
 
 def nama_pendek(judul):
-    """Judul toko yang panjang/berisi kata kunci → nama ≤ 60 karakter (tanpa [TAG]/【TAG】, potong di batas kata)."""
-    s = re.sub(r"\[[^\]]*\]|【[^】]*】", " ", judul or "")
+    """Judul toko yang panjang/berisi kata kunci → nama ≤ 60 karakter (tanpa [TAG]/【TAG】/(HF) di depan, bagian
+    pertama sebelum ' | ', potong di batas kata)."""
+    s = re.sub(r"\[[^\]]*\]|【[^】]*】|^\s*\([A-Z0-9+ ]{1,6}\)", " ", judul or "")
     s = re.sub(r"\s+", " ", s).strip(" -|")
+    awal = s.split(" | ")[0].strip()
+    if len(awal) >= 15:
+        s = awal
     if len(s) <= NAMA_MAKS:
         return s
     potong = s[:NAMA_MAKS + 1].rsplit(" ", 1)[0]

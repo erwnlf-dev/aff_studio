@@ -119,6 +119,8 @@ class Teks(unittest.TestCase):
     def test_nama_dan_angka(self):
         self.assertEqual(ambil_link.nama_pendek("[PROMO] Botol Minum Contoh 1 Liter Stainless Tahan Panas Dingin Anti Bocor"),
                          "Botol Minum Contoh 1 Liter Stainless Tahan Panas Dingin Anti")
+        self.assertEqual(ambil_link.nama_pendek("(HF) Keset Contoh Serap Air 40x60CM | Anti Slip Motif"),
+                         "Keset Contoh Serap Air 40x60CM")
         self.assertEqual(ambil_link.angka_singkat("266,1RB"), 266100)
         self.assertEqual(ambil_link.angka_singkat("1,2JT"), 1200000)
         self.assertEqual(ambil_link.angka_rp("Rp26.900 - Rp34.900"), 26900)
