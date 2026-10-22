@@ -20,6 +20,7 @@ if [ "${1:-}" = "--version" ]; then
   [ -f "$(dirname "$0")/versi_lambat" ] && { touch "$(dirname "$0")/versi_mulai"; sleep 2; }
   echo "tiruan 0"; exit 0
 fi
+[ -f "$(dirname "$0")/keluar_cepat" ] && exit 0
 sleep 300 &
 echo $! > "$(dirname "$0")/claude_anak.txt"
 wait
@@ -49,10 +50,10 @@ class RunProduksi(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def jalankan(self):
+    def jalankan(self, **env):
         return subprocess.Popen([str(self.repo / "run_produksi.sh"), str(self.paket), fixture.PRODUK_OK], cwd=self.repo,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
-                                env={k: v for k, v in os.environ.items() if k != "AFF_DATA_DIR"})
+                                env=dict({k: v for k, v in os.environ.items() if k != "AFF_DATA_DIR"}, **env))
 
     def kabar(self):
         return [json.loads(x) for x in self.inbox.read_text().splitlines()] if self.inbox.exists() else []
@@ -101,6 +102,17 @@ class RunProduksi(unittest.TestCase):
         if anak.exists():
             time.sleep(0.5)
             self.assertFalse(hidup(int(anak.read_text())))
+
+
+    def test_platform_semua_dari_konsol(self):
+        """Review 22 Okt #1: konsol mengirim PRODUKSI_PLATFORM=semua (pilihan bawaan); skrip asli menerimanya dan
+        mencatatnya. Nilai asing ditolak sebelum mengunci (kode 2)."""
+        (Path(self.tmp.name) / "keluar_cepat").write_text("1")
+        p = self.jalankan(PRODUKSI_PLATFORM="semua")
+        p.wait(120)
+        m = json.loads((self.paket / "produksi" / fixture.PRODUK_OK / "produksi.json").read_text())
+        self.assertEqual((m["platform"], m["cta_tempat"]), ("semua", "bawah"))
+        self.assertEqual(self.jalankan(PRODUKSI_PLATFORM="myspace").wait(30), 2)
 
 
 if __name__ == "__main__":

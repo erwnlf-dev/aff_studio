@@ -54,11 +54,16 @@ PLATFORM_CTA = {"semua": "bawah", "shopee_video": "keranjang oranye", "tiktok": 
 
 
 def platform_folder(folder):
+    """Platform tujuan tercatat. Folder lama (produksi.json tanpa 'platform') dibuat dengan CTA Shopee 'cek keranjang
+    oranye' → shopee_video; folder baru tanpa produksi.json → semua (bawaan doc 16). Sama dengan konsol (Aff.platform)."""
+    f = Path(folder) / "produksi.json"
+    if not f.exists():
+        return "semua"
     try:
-        p = json.loads((Path(folder) / "produksi.json").read_text(encoding="utf-8")).get("platform")
+        p = json.loads(f.read_text(encoding="utf-8")).get("platform")
     except (OSError, ValueError):
         p = None
-    return p if p in PLATFORM_CTA else "semua"
+    return p if p in PLATFORM_CTA else "shopee_video"
 
 
 def meta(folder):
@@ -104,7 +109,9 @@ def foto_sheet(produk, tujuan):
 # run_produksi.sh di bawah kunci produksi; konsol web tidak mengarsipkan): GAGAL.md lama tidak boleh menutupi video baru,
 # dan final.mp4/qa_compliance.json lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap.
 HASIL_RUN = ("final.mp4", "final_sheet.jpg", "cek_akhir.md", "qa_compliance.json", "teks_post.txt", "status.json",
-             "biaya.json", "GAGAL.md")
+             "biaya.json", "GAGAL.md", "teks_platform.json", "tayang.json", "telegram.json")
+# tayang.json/telegram.json (konsol): catatan posting Threads dan serah Telegram versi sebelumnya; konsol menolak Ulangi
+# selama post Threads masih aktif, jadi yang diarsipkan hanya catatan yang sudah selesai (gagal/dibatalkan).
 
 
 def arsipkan_hasil(folder):

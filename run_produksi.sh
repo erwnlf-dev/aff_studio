@@ -15,8 +15,8 @@ cd "$(dirname "$0")"
 PAKET="${1:?folder paket}"; ID="${2:?product_id}"; CATATAN="${3:-}"
 # PRODUKSI_BARU=1: naskah dan voiceover baru (init mengarsipkan folder lama utuh, di bawah kunci produksi)
 INIT_ARGS=(); [ "${PRODUKSI_BARU:-}" = "1" ] && INIT_ARGS=(--baru)
-# PRODUKSI_PLATFORM: platform tujuan utama (shopee_video | tiktok | threads), menentukan CTA; kosong = yang tercatat
-[[ "${PRODUKSI_PLATFORM:-}" =~ ^(|shopee_video|tiktok|threads)$ ]] || { echo "PRODUKSI_PLATFORM tidak valid" >&2; exit 2; }
+# PRODUKSI_PLATFORM: platform tujuan utama (semua | shopee_video | tiktok | threads), menentukan CTA; kosong = yang tercatat
+[[ "${PRODUKSI_PLATFORM:-}" =~ ^(|semua|shopee_video|tiktok|threads)$ ]] || { echo "PRODUKSI_PLATFORM tidak valid" >&2; exit 2; }
 [ -n "${PRODUKSI_PLATFORM:-}" ] && INIT_ARGS+=(--platform "$PRODUKSI_PLATFORM")
 [[ "$ID" =~ ^[0-9]{5,20}$ ]] || { echo "product_id tidak valid: $ID" >&2; exit 2; }
 [ -d "$PAKET" ] || { echo "paket tidak ada: $PAKET" >&2; exit 2; }
