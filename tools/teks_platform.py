@@ -42,31 +42,45 @@ def umum(nama, teks, sah):
     return salah
 
 
+def _teks(d, p, kunci, salah):
+    """String di d[p][kunci], atau None kalau tidak ada. Bentuk yang salah (bukan string) dicatat sebagai GAGAL."""
+    v = (d.get(p) or {}).get(kunci) if isinstance(d.get(p), dict) else None
+    if v is None:
+        return None
+    if not isinstance(v, str):
+        salah.append("%s.%s: harus teks (string), bukan %s" % (p, kunci, type(v).__name__))
+        return None
+    return v.strip()
+
+
 def cek(folder):
     folder = Path(folder)
     d = json.loads((folder / "teks_platform.json").read_text(encoding="utf-8"))
-    try:
-        platform = json.loads((folder / "produksi.json").read_text(encoding="utf-8")).get("platform") or "semua"
-    except (OSError, ValueError):
-        platform = "semua"
+    if not isinstance(d, dict):
+        raise ValueError("isi harus objek JSON {\"shopee_video\": {...}, \"tiktok\": {...}, \"threads\": {...}}, bukan %s"
+                         % type(d).__name__)
+    import produksi                                     # di sini: produksi.py memuat banyak alat lain
+    platform = produksi.platform_folder(folder)         # folder lama tanpa 'platform' = shopee_video
     sah = qa_compliance.sumber_angka(folder)
     salah = []
     for p in PLATFORM_WAJIB.get(platform, PLATFORM_WAJIB["semua"]):
-        if not isinstance(d.get(p), dict):
+        if p not in d:
             salah.append("%s: tidak ada (platform tujuan %s)" % (p, platform))
+        elif not isinstance(d[p], dict):
+            salah.append("%s: harus objek JSON, bukan %s" % (p, type(d[p]).__name__))
+        elif p != "threads" and d[p].get("caption") is None:
+            salah.append("%s.caption: tidak ada (platform tujuan %s)" % (p, platform))
 
-    s = (d.get("shopee_video") or {}).get("caption")
+    s = _teks(d, "shopee_video", "caption", salah)
     if s is not None:
-        s = s.strip()
         if not s or len(s) > CAPTION_SHOPEE:
             salah.append("shopee_video.caption: %d karakter, harus 1–%d (tidak bisa diedit setelah posting)" % (len(s), CAPTION_SHOPEE))
         if LINK.search(s) or re.search(r"\b(link|bio)\b", s, re.I):
             salah.append("shopee_video.caption: tanpa link/bio (produk ada di keranjang oranye)")
         salah += umum("shopee_video.caption", s, sah)
 
-    t = (d.get("tiktok") or {}).get("caption")
+    t = _teks(d, "tiktok", "caption", salah)
     if t is not None:
-        t = t.strip()
         tag = HASHTAG.findall(t)
         if not t or len(t) > CAPTION_TIKTOK:
             salah.append("tiktok.caption: kosong atau > %d karakter" % CAPTION_TIKTOK)
@@ -82,9 +96,8 @@ def cek(folder):
             salah.append("tiktok.caption: kalimat pertama harus berisi kata kunci produk (TikTok SEO)")
         salah += umum("tiktok.caption", t, sah)
 
-    th = d.get("threads")
-    if isinstance(th, dict):
-        teks, topik, balas = (th.get("teks") or "").strip(), (th.get("topik") or "").strip(), (th.get("balasan") or "").strip()
+    if isinstance(d.get("threads"), dict):
+        teks, topik, balas = (_teks(d, "threads", k, salah) or "" for k in ("teks", "topik", "balasan"))
         if not teks or len(teks.encode("utf-8")) > THREADS_BYTE:
             salah.append("threads.teks: %d byte UTF-8, harus 1–%d (emoji dihitung per byte)" % (len(teks.encode("utf-8")), THREADS_BYTE))
         if LINK.search(teks) or "{LINK}" in teks:
@@ -112,13 +125,13 @@ def main(argv=None):
     try:
         d, salah = cek(folder)
     except (OSError, ValueError) as e:
-        print("teks_platform.json tidak terbaca: %s" % e)
+        print("GAGAL teks_platform.json tidak terbaca: %s" % e)
         return 2
     for s in salah:
         print("GAGAL " + s)
     if salah:
         return 1
-    cap = ((d.get("shopee_video") or {}).get("caption") or (d.get("tiktok") or {}).get("caption") or "").strip()
+    cap = _teks(d, "shopee_video", "caption", []) or _teks(d, "tiktok", "caption", []) or ""
     (folder / "teks_post.txt").write_text(cap + "\n(link afiliasi)\n", encoding="utf-8")     # konsol lama / paket unggah
     print("teks platform LOLOS (%s); teks_post.txt ditulis dari caption Shopee" % ", ".join(sorted(k for k in d if isinstance(d[k], dict))))
     return 0

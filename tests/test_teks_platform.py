@@ -83,6 +83,29 @@ class TeksPlatform(unittest.TestCase):
         self.assertIn("diskon", s)
         self.assertIn("angka 99", s)
 
+    def test_bentuk_salah_jadi_gagal_jelas(self):
+        """Review 22 Okt R2 #6: JSON salah bentuk = baris GAGAL yang jelas, bukan traceback."""
+        import contextlib
+        import io
+        self.tulis(["bukan objek"])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(teks_platform.main([str(self.folder)]), 2)
+        self.assertIn("GAGAL teks_platform.json tidak terbaca: isi harus objek JSON", out.getvalue())
+        s = " | ".join(self.salah({"shopee_video": "x", "tiktok": {"caption": 5},
+                                   "threads": {"teks": ["a"], "topik": None, "balasan": {}}}))
+        for kata in ("shopee_video: harus objek JSON", "tiktok.caption: harus teks", "threads.teks: harus teks",
+                     "threads.balasan: harus teks"):
+            self.assertIn(kata, s)
+        self.assertIn("tiktok.caption: tidak ada", " | ".join(self.salah({**BAIK, "tiktok": {}})))
+
+    def test_folder_lama_tanpa_platform_shopee_saja(self):
+        """Review 22 Okt R2 #5: produksi.json lama tanpa 'platform' = shopee_video (sama dengan konsol/produksi.py)."""
+        m = json.loads((self.folder / "produksi.json").read_text())
+        m.pop("platform", None)
+        (self.folder / "produksi.json").write_text(json.dumps(m))
+        self.assertEqual(self.salah({"shopee_video": BAIK["shopee_video"]}), [])
+
 
 if __name__ == "__main__":
     unittest.main()

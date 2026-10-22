@@ -114,10 +114,8 @@ def cmd_video(folder, engine):
     lolos = not gagal
     # CTA ke keranjang (doc 15 §2): peringatan, bukan GAGAL (video lama dengan VO "cek di link" tetap bisa disetujui)
     peringatan = []
-    try:
-        platform = json.loads((folder / "produksi.json").read_text(encoding="utf-8")).get("platform") or "semua"
-    except (OSError, ValueError):
-        platform = "semua"
+    import produksi                                     # di sini: produksi.py memuat banyak alat lain
+    platform = produksi.platform_folder(folder)         # folder lama tanpa 'platform' = shopee_video (sama dengan konsol)
     if platform in ("shopee_video", "tiktok") and not any("keranjang" in f["teks"].lower() for f in frames if f["t"] >= dur - 4.0):
         peringatan.append("CTA: kata 'keranjang' tidak terbaca di 4 detik terakhir (%s: cek keranjang)" % platform)
     hasil = {"lolos": lolos, "gagal": gagal, "periksa_angka": periksa, "peringatan": peringatan, "frame": len(frames),
