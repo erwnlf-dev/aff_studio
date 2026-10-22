@@ -99,6 +99,25 @@ class TeksPlatform(unittest.TestCase):
             self.assertIn(kata, s)
         self.assertIn("tiktok.caption: tidak ada", " | ".join(self.salah({**BAIK, "tiktok": {}})))
 
+    def test_data_produk_hilang_menyebut_berkas_yang_benar(self):
+        """Review 22 Okt R3 #10: data_layar.json hilang bukan 'teks_platform.json tidak terbaca'."""
+        import contextlib
+        import io
+        self.tulis(BAIK)
+        (self.folder / "data_layar.json").unlink()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(teks_platform.main([str(self.folder)]), 2)
+        self.assertIn("GAGAL data produk untuk cek angka tidak terbaca", out.getvalue())
+        self.assertIn("data_layar.json", out.getvalue())
+        self.assertNotIn("teks_platform.json tidak terbaca", out.getvalue())
+        (self.folder / "data_layar.json").write_text("[]")
+        (self.folder / "produk.json").write_text('{"bukan": 1}')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(teks_platform.main([str(self.folder)]), 2)
+        self.assertIn("KeyError", out.getvalue())
+
     def test_folder_lama_tanpa_platform_shopee_saja(self):
         """Review 22 Okt R2 #5: produksi.json lama tanpa 'platform' = shopee_video (sama dengan konsol/produksi.py)."""
         m = json.loads((self.folder / "produksi.json").read_text())

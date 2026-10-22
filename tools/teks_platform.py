@@ -42,6 +42,10 @@ def umum(nama, teks, sah):
     return salah
 
 
+class DataProdukError(Exception):
+    """produk.json/data_layar.json/naskah.json rusak atau hilang: bukan kesalahan teks_platform.json."""
+
+
 def _teks(d, p, kunci, salah):
     """String di d[p][kunci], atau None kalau tidak ada. Bentuk yang salah (bukan string) dicatat sebagai GAGAL."""
     v = (d.get(p) or {}).get(kunci) if isinstance(d.get(p), dict) else None
@@ -61,7 +65,11 @@ def cek(folder):
                          % type(d).__name__)
     import produksi                                     # di sini: produksi.py memuat banyak alat lain
     platform = produksi.platform_folder(folder)         # folder lama tanpa 'platform' = shopee_video
-    sah = qa_compliance.sumber_angka(folder)
+    try:
+        sah = qa_compliance.sumber_angka(folder)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        raise DataProdukError("data produk untuk cek angka tidak terbaca (produk.json, data_layar.json, naskah.json): "
+                              "%s: %s" % (type(e).__name__, e)) from None
     salah = []
     for p in PLATFORM_WAJIB.get(platform, PLATFORM_WAJIB["semua"]):
         if p not in d:
@@ -124,6 +132,9 @@ def main(argv=None):
     folder = Path(argv[0])
     try:
         d, salah = cek(folder)
+    except DataProdukError as e:
+        print("GAGAL %s" % e)
+        return 2
     except (OSError, ValueError) as e:
         print("GAGAL teks_platform.json tidak terbaca: %s" % e)
         return 2
