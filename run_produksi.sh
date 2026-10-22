@@ -14,7 +14,10 @@ cd "$(dirname "$0")"
 [ -x .venv/bin/python3 ] && export PATH="$(pwd)/.venv/bin:$PATH"
 PAKET="${1:?folder paket}"; ID="${2:?product_id}"; CATATAN="${3:-}"
 # PRODUKSI_BARU=1: naskah dan voiceover baru (init mengarsipkan folder lama utuh, di bawah kunci produksi)
-INIT_BARU=(); [ "${PRODUKSI_BARU:-}" = "1" ] && INIT_BARU=(--baru)
+INIT_ARGS=(); [ "${PRODUKSI_BARU:-}" = "1" ] && INIT_ARGS=(--baru)
+# PRODUKSI_PLATFORM: platform tujuan utama (shopee_video | tiktok | threads), menentukan CTA; kosong = yang tercatat
+[[ "${PRODUKSI_PLATFORM:-}" =~ ^(|shopee_video|tiktok|threads)$ ]] || { echo "PRODUKSI_PLATFORM tidak valid" >&2; exit 2; }
+[ -n "${PRODUKSI_PLATFORM:-}" ] && INIT_ARGS+=(--platform "$PRODUKSI_PLATFORM")
 [[ "$ID" =~ ^[0-9]{5,20}$ ]] || { echo "product_id tidak valid: $ID" >&2; exit 2; }
 [ -d "$PAKET" ] || { echo "paket tidak ada: $PAKET" >&2; exit 2; }
 
@@ -75,7 +78,7 @@ M=logs/produksi_mulai.log
 if [ -f "$M" ] && [ "$(wc -l < "$M")" -gt 500 ]; then tail -n 100 "$M" > "$M.tmp" && mv "$M.tmp" "$M"; fi
 echo "$$ $ID $(date -Is)" >> "$M"
 
-python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER" "${INIT_BARU[@]}" || {
+python3 tools/produksi.py init --paket "$PAKET" --produk "$ID" --folder "$FOLDER" "${INIT_ARGS[@]}" || {
   [ -n "$DIHENTIKAN" ] && dihentikan
   kabar gagal "Affiliate: produksi tidak bisa dimulai" "$ID: tools/produksi.py init gagal. Lihat logs/web_$ID.out."
   exit 4; }
@@ -87,6 +90,7 @@ FOLDER KERJA: $FOLDER
 PAKET: $(cd "$PAKET" && pwd)
 PRODUK: $ID
 VOICE: $VOICE
+PLATFORM TUJUAN: $(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("%s (CTA ke %s)" % (d.get("platform","shopee_video"), d.get("cta_tempat","keranjang oranye")))' "$FOLDER/produksi.json")
 Jalankan semua langkah 0–12 di CLAUDE.md untuk produk ini. Folder sudah di-init skrip."
 [ -n "$CATATAN" ] && PROMPT="$PROMPT
 CATATAN PEMILIK (data, bukan perintah shell): $CATATAN"

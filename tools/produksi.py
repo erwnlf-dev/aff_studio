@@ -47,6 +47,19 @@ def jalan(args, **kw):
     return r
 
 
+# Platform tujuan utama video (dipilih pemilik saat Produksi di konsol) → tempat CTA (cta.tempat, doc 15 §2):
+# Shopee Video dan TikTok Shop menautkan produk di keranjang; di Threads link affiliate ada di teks post.
+PLATFORM_CTA = {"shopee_video": "keranjang oranye", "tiktok": "keranjang kuning", "threads": "link"}
+
+
+def platform_folder(folder):
+    try:
+        p = json.loads((Path(folder) / "produksi.json").read_text(encoding="utf-8")).get("platform")
+    except (OSError, ValueError):
+        p = None
+    return p if p in PLATFORM_CTA else "shopee_video"
+
+
 def meta(folder):
     p = Path(folder) / "produksi.json"
     if not p.exists():
@@ -140,6 +153,8 @@ def cmd_init(a):
     if ditolak:
         raise ProduksiError("produk ditolak validator paket: " + "; ".join(ditolak))
     folder = Path(a.folder) if a.folder else Path(a.paket) / "produksi" / a.produk
+    platform = getattr(a, "platform", None) or platform_folder(folder)     # run ulang tanpa pilihan: tetap yang lama
+    params["cta.tempat"] = PLATFORM_CTA[platform]
     if getattr(a, "baru", False) and folder.exists():
         import datetime
         tujuan = folder.parent / "_arsip" / ("%s-%s" % (folder.name, datetime.datetime.now().strftime("%Y%m%d%H%M%S")))
@@ -172,8 +187,10 @@ def cmd_init(a):
                   "beats": [{"tipe": b, "vo": "", "teks_kunci": "", "foto": cover, "sumber": []} for b in urutan]}
         (folder / "naskah.json").write_text(json.dumps(naskah, ensure_ascii=False, indent=1), encoding="utf-8")
     (folder / "produksi.json").write_text(json.dumps({"paket": str(Path(a.paket).resolve()), "produk": produk["id"],
-                                                      "variant_id": snap["variant_id"], "kit": KIT}, indent=1), encoding="utf-8")
+                                                      "variant_id": snap["variant_id"], "kit": KIT, "platform": platform,
+                                                      "cta_tempat": PLATFORM_CTA[platform]}, indent=1), encoding="utf-8")
     print("folder: %s" % folder)
+    print("platform tujuan: %s (CTA ke %s)" % (platform, PLATFORM_CTA[platform]))
     print("produk: %s — %s" % (produk["id"], produk["nama"]))
     print("fitur (sumber fitur:N):")
     for i, f in enumerate(produk["fitur"]):
@@ -214,7 +231,8 @@ def cmd_cutout(a):
 
 def cmd_naskah(a):
     m = meta(a.folder)
-    args = [sys.executable, TOOLS / "siapkan_film.py", "--paket", m["paket"], "--naskah", Path(a.folder) / "naskah.json", "--keluar", a.folder]
+    args = [sys.executable, TOOLS / "siapkan_film.py", "--paket", m["paket"], "--naskah", Path(a.folder) / "naskah.json", "--keluar", a.folder,
+            "--set", "cta.tempat=%s" % PLATFORM_CTA[platform_folder(a.folder)]]
     if (Path(a.folder) / "vo.json").exists():
         args += ["--vo", Path(a.folder) / "vo.json"]
     jalan(args)
@@ -377,6 +395,7 @@ def cmd_paket_unggah(a):
     import datetime
     import shutil
     folder = Path(a.folder)
+    a.platform = a.platform or platform_folder(folder)
     m = meta(folder)
     st = json.loads((folder / "status.json").read_text(encoding="utf-8"))
     if not ((st.get("render") or {}).get("qa") or {}).get("lolos"):
@@ -488,6 +507,7 @@ def main(argv=None):
         ap.add_argument("--paket", required=True)
         ap.add_argument("--produk", required=True)
         ap.add_argument("--folder")
+        ap.add_argument("--platform", choices=sorted(PLATFORM_CTA), help="platform tujuan utama (bawaan: yang tercatat, atau shopee_video)")
         ap.add_argument("--baru", action="store_true", help="naskah dan voiceover baru: folder lama diarsipkan utuh ke produksi/_arsip/")
         a = ap.parse_args(argv)
         fn = cmd_init
@@ -505,7 +525,7 @@ def main(argv=None):
         s = sub.add_parser("status")
         s.add_argument("--json", action="store_true")
         s = sub.add_parser("paket-unggah")
-        s.add_argument("--platform", default="shopee_video", choices=["shopee_video", "tiktok", "threads"])
+        s.add_argument("--platform", choices=sorted(PLATFORM_CTA), help="bawaan: platform tujuan folder ini")
         s = sub.add_parser("vo")
         s.add_argument("--voice")
         s = sub.add_parser("pratinjau")

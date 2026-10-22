@@ -73,7 +73,10 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
    - **Hook dan pembuka:**
      - kalimat pertama hook ≤ 8 kata: masalah konkret, hasil, atau nilai, dengan nama benda; bukan salam, bukan pola "<benda> ini, …?" yang sama setiap video,
      - **tanpa "Kenalin/perkenalkan"**: produk masuk dengan nama atau hasilnya; jeda dramatis "…" tetap tepat sebelum produk masuk (di situ nanti hening).
-   - **CTA ke keranjang, bukan link** (`cta.tempat`, Shopee Video: "keranjang oranye"): diucapkan dan ditulis di `cta_layar`, misalnya "cek keranjang oranye ya" atau "cek harganya di keranjang oranye". Kata "link"/"bio" ditolak (tautan keluar aplikasi dilarang di Shopee Video).
+   - **CTA mengikuti `PLATFORM TUJUAN` di prompt** (dipilih pemilik saat Produksi; tercatat di `produksi.json`, dan `naskah` memvalidasi `cta.tempat`-nya):
+     - `shopee_video` → **keranjang oranye**: "cek keranjang oranye ya" / "cek harganya di keranjang oranye"; kata "link"/"bio" ditolak (tautan keluar aplikasi dilarang di Shopee Video),
+     - `tiktok` → **keranjang kuning**, aturan sama,
+     - `threads` → **link**: link affiliate ada di teks post (konsol menambahkannya), misalnya "link-nya ada di post ini ya"; jangan sebut keranjang.
    - **Klaim:**
      - setiap beat punya `sumber` (`fitur:N`, `nama`, `rating`, `ulasan`, `terjual`, `varian`, `masalah`, `ajakan`),
      - klaim hanya dari `key_features` dan `data_layar.json`: tanpa waktu/angka karangan, tanpa harga coret atau diskon, tanpa "termurah",
@@ -104,7 +107,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
      - demonstrasi fitur **digambar**, dengan `labelIlustrasi` di demo,
      - teks kunci ≤ 3 kata.
    - **Wajib di setiap frame:** `disclosure(ctx)` dan `caption(ctx, t)` (dari `buatCaption`), lalu `paperFinish`.
-   - **CTA:** `panahKeranjang(ctx, t, <cue kata "keranjang">)` di adegan CTA, dipanggil **setelah** `caption`, ujungnya ke keranjang kiri bawah; teks kunci CTA menyebut keranjang.
+   - **CTA:** untuk platform keranjang (`shopee_video`, `tiktok`), `panahKeranjang(ctx, t, <cue kata "keranjang">)` di adegan CTA, dipanggil **setelah** `caption`, ujungnya ke keranjang kiri bawah; teks kunci CTA menyebut keranjang. Untuk `threads`: tanpa panah keranjang; teks kunci CTA "Link di post".
    - **Transisi:** potong keras atau dari konten (`wipe`, `irisMasuk`). **Frame tepat setelah transisi sudah berisi subjek**, termasuk aktor yang masuk; tidak ada layar kosong.
    - **Zona aman:** teks dan aksi di atas caption (dasar caption y = 1.470), di bawah y = 150, kanan ≤ 940. Shopee Video: keranjang oranye di kiri bawah (doc 14 §2), jadi aksi penting di atas y = 1.300.
 7. **Critic loop.**
@@ -138,7 +141,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
     - peringatan tersisa,
     - PERLU DICEK telinga (merek/kata asing).
 12. **Teks post → `teks_post.txt`.**
-    - **Isi:** 2–3 baris pendek (≤ 300 karakter), klaim sama dengan video, ajakan ke keranjang (bukan "link"), baris terakhir `(link afiliasi)`.
+    - **Isi:** 2–3 baris pendek (≤ 300 karakter), klaim sama dengan video, ajakan sesuai platform tujuan (keranjang, atau "link di bawah" untuk Threads), baris terakhir `(link afiliasi)` (konsol menggantinya dengan link saat posting Threads).
     - **Suara manusia, bukan copywriter:** huruf kecil boleh; tanpa "Fun fact", tanpa kata baku, tanpa tanda pisah panjang.
 
 ## Batasan tetap
