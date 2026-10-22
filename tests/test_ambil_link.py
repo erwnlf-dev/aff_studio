@@ -242,3 +242,33 @@ class Ambil(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IdHalaman(unittest.TestCase):
+    """Review 22 Okt #6: id dari halaman dipakai sebagai nama folder; divalidasi sebelum apa pun ditulis."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.data = Path(self.tmp.name) / "data"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def gagal(self, data, url, pesan):
+        with self.assertRaises(ambil_link.AmbilError) as c:
+            ambil_link.ambil(url, "2099-01-01", self.data, cdp=CdpPalsu(data))
+        self.assertIn(pesan, str(c.exception))
+        self.assertFalse((self.data / "2099-01-01").exists())                  # tidak ada yang ditulis
+        self.assertFalse(any(Path(self.tmp.name).rglob("meta.json")))
+
+    def test_item_id_berbahaya_lewat_link_pendek(self):
+        d = item(item={"item_id": "../../../x"}, url_akhir="https://shopee.co.id/product/111/2000000001")
+        self.gagal(d, "https://s.shopee.co.id/AbC123", "tidak valid")
+
+    def test_id_halaman_beda_dengan_url(self):
+        d = item(item={"item_id": "2000000009"}, url_akhir="https://shopee.co.id/product/111/2000000009")
+        self.gagal(d, URL, "produk lain")
+
+    def test_halaman_akhir_bukan_shopee(self):
+        self.gagal(item(url_akhir="https://contoh.invalid/product/111/2000000001"), "https://s.shopee.co.id/AbC123", "bukan shopee")
+        self.gagal(item(url_akhir="https://shopee.co.id/product/111/2000000777"), "https://s.shopee.co.id/AbC123", "tidak sama")

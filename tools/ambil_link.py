@@ -72,6 +72,28 @@ def periksa_url(url):
     return ids
 
 
+POLA_ITEM, POLA_TOKO = re.compile(r"\d{5,20}"), re.compile(r"\d{1,20}")
+HOST_PRODUK = {"shopee.co.id", "www.shopee.co.id"}
+
+
+def periksa_item(it, ids, url_akhir):
+    """(shop_id, item_id) dari data halaman, divalidasi SEBELUM apa pun ditulis (review 22 Okt): id harus angka
+    (dipakai sebagai nama folder), sama dengan id di URL yang ditempel kalau ada, dan halaman akhir (setelah redirect
+    link pendek) harus halaman produk shopee.co.id dengan id yang sama."""
+    toko, item = str(it.get("shop_id") or ""), str(it.get("item_id") or "")
+    if not POLA_ITEM.fullmatch(item) or not POLA_TOKO.fullmatch(toko):
+        raise AmbilError("id produk/toko dari halaman tidak valid: %r / %r" % (item[:30], toko[:30]))
+    if ids and (toko, item) != (str(ids[0]), str(ids[1])):
+        raise AmbilError("halaman menampilkan produk lain (%s.%s) dari link yang ditempel (%s.%s)" % (toko, item, ids[0], ids[1]))
+    u = urlparse(url_akhir or "")
+    if u.scheme != "https" or (u.hostname or "").lower() not in HOST_PRODUK:
+        raise AmbilError("halaman akhir bukan shopee.co.id: %s" % (url_akhir or "?")[:80])
+    akhir = id_dari_url(url_akhir)
+    if akhir and (str(akhir[0]), str(akhir[1])) != (toko, item):
+        raise AmbilError("id di halaman akhir (%s.%s) tidak sama dengan data produk (%s.%s)" % (akhir[0], akhir[1], toko, item))
+    return toko, item
+
+
 def url_produk(shop_id, item_id):
     return "https://shopee.co.id/product/%s/%s" % (shop_id, item_id)
 
@@ -386,7 +408,7 @@ def ambil(url, tanggal=None, data=DATA, link=None, perbarui=False, cdp=cdp_node,
         it = d.get("item") or {}
         if not it.get("item_id") or not it.get("shop_id"):
             raise AmbilError("data produk tidak lengkap dari halaman")
-        pid = str(it["item_id"])
+        _, pid = periksa_item(it, ids, d.get("url_akhir"))
         if not ids and not perbarui and _ada(akar, pid):
             return _sudah_ada(akar, tanggal, pid)
         if not link:
