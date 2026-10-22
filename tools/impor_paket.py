@@ -72,44 +72,63 @@ def _tulis_atomik(path, teks):
     os.replace(tmp, path)
 
 
+def _rank(p):
+    r = p.get("rank")
+    return r if isinstance(r, int) and not isinstance(r, bool) else None
+
+
+def _csv(teks, nama):
+    try:
+        r = csv.DictReader(io.StringIO(teks))
+        return list(r.fieldnames or []), list(r)
+    except csv.Error as e:
+        raise paket.PaketError("%s tidak terbaca: %s" % (nama, e))
+
+
 def gabung_daftar(tujuan, z):
     """products.json/manifest_slim.json/shortlist.csv yang sudah ada + produk zip yang belum ada. Rank produk zip
-    digeser ke belakang produk lama (urutan zip dipertahankan). Mengembalikan jumlah produk yang ditambahkan."""
+    digeser ke belakang produk lama (urutan zip dipertahankan). SEMUA berkas (paket dan zip) dibaca dan diperiksa
+    dulu; baru setelah itu ditulis, masing-masing atomik (berkas rusak = tidak ada yang berubah). Mengembalikan jumlah
+    produk yang ditambahkan."""
     prod = Path(tujuan) / "products"
+    nama = set(z.namelist())
     lama = _daftar_json((prod / "products.json").read_text(encoding="utf-8"), "products.json paket")
     zip_ = _daftar_json(z.read("products/products.json").decode("utf-8"), "products.json zip")
+    sj, sl = prod / "manifest_slim.json", prod / "shortlist.csv"
+    slim = slim_zip = isi = baris_zip = None
+    if "products/manifest_slim.json" in nama:
+        slim_zip = _daftar_json(z.read("products/manifest_slim.json").decode("utf-8"), "manifest_slim.json zip")
+        slim = _daftar_json(sj.read_text(encoding="utf-8"), "manifest_slim.json paket") if sj.exists() else []
+    if "products/shortlist.csv" in nama:
+        kolom_zip, baris_zip = _csv(z.read("products/shortlist.csv").decode("utf-8"), "shortlist.csv zip")
+        kolom, isi = _csv(sl.read_text(encoding="utf-8"), "shortlist.csv paket") if sl.exists() else (kolom_zip, [])
+        kolom = kolom or kolom_zip
+
     ada = {str(p.get("product_id")) for p in lama}
-    geser = max([p.get("rank") or 0 for p in lama if isinstance(p.get("rank"), int)] + [0])
-    tambah = [p for p in sorted(zip_, key=lambda x: (x.get("rank") is None, x.get("rank") or 0))
+    geser = max([_rank(p) or 0 for p in lama] + [0])
+    tambah = [p for p in sorted(zip_, key=lambda x: (_rank(x) is None, _rank(x) or 0))
               if str(p.get("product_id")) not in ada]
     rank = {}
     for n, p in enumerate(tambah, 1):
         p["rank"] = rank[str(p.get("product_id"))] = geser + n
-    _tulis_atomik(prod / "products.json", json.dumps(lama + tambah, ensure_ascii=False, indent=2) + "\n")
-    nama = set(z.namelist())
-    sj = prod / "manifest_slim.json"
-    if "products/manifest_slim.json" in nama:
+    tulis = [(prod / "products.json", json.dumps(lama + tambah, ensure_ascii=False, indent=2) + "\n")]
+    if slim_zip is not None:
         slim_zip = [dict(s, rank=rank[str(s.get("product_id"))]) if "rank" in s else s
-                    for s in _daftar_json(z.read("products/manifest_slim.json").decode("utf-8"), "manifest_slim.json zip")
-                    if str(s.get("product_id")) in rank]
-        slim = _daftar_json(sj.read_text(encoding="utf-8"), "manifest_slim.json paket") if sj.exists() else []
-        _tulis_atomik(sj, json.dumps(slim + slim_zip, ensure_ascii=False, indent=2) + "\n")
-    sl = prod / "shortlist.csv"
-    if "products/shortlist.csv" in nama:
-        r = csv.DictReader(io.StringIO(z.read("products/shortlist.csv").decode("utf-8")))
-        kolom_zip, baris_zip = r.fieldnames or [], [dict(b, rank=rank[b["product_id"]]) if "rank" in b else b
-                                                  for b in r if b.get("product_id") in rank]
-        if sl.exists():
-            with open(sl, encoding="utf-8", newline="") as f:
-                r = csv.DictReader(f)
-                kolom, isi = r.fieldnames or kolom_zip, list(r)
-        else:
-            kolom, isi = kolom_zip, []
+                    for s in slim_zip if str(s.get("product_id")) in rank]
+        slim = [s for s in slim if str(s.get("product_id")) not in rank]     # sisa impor yang terhenti: diganti
+        tulis.append((sj, json.dumps(slim + slim_zip, ensure_ascii=False, indent=2) + "\n"))
+    if baris_zip is not None:
+        baris_zip = [dict(b, rank=rank[b["product_id"]]) if "rank" in b else b
+                     for b in baris_zip if b.get("product_id") in rank]
         out = io.StringIO()
         w = csv.DictWriter(out, fieldnames=kolom, extrasaction="ignore")
         w.writeheader()
-        w.writerows(isi + baris_zip)
-        _tulis_atomik(sl, out.getvalue())
+        w.writerows([b for b in isi if b.get("product_id") not in rank] + baris_zip)
+        tulis.append((sl, out.getvalue()))
+    # products.json terakhir: kalau penulisan berhenti di tengah, impor ulang masih melihat produk zip sebagai
+    # belum ada lalu menulis ulang daftar pendamping dari awal (manifest/shortlist difilter per product_id baru)
+    for path, teks in tulis[1:] + tulis[:1]:
+        _tulis_atomik(path, teks)
     return len(tambah)
 
 

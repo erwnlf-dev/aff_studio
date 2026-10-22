@@ -184,7 +184,13 @@ def muat(path, params=None, sekarang=None):
     slim = {}
     if slim_path.exists():
         slim = {str(x.get("product_id")): x for x in json.loads(slim_path.read_text(encoding="utf-8"))}
-    semua = sorted(semua, key=lambda x: (x.get("rank") is None, x.get("rank") or 0))
+    if not all(isinstance(x, dict) for x in semua):
+        raise PaketError("products/products.json harus berupa daftar objek produk")
+
+    def rank(x):                                        # rank bukan bilangan bulat (data tangan/rusak): di belakang
+        r = x.get("rank")
+        return (False, r) if isinstance(r, int) and not isinstance(r, bool) else (True, 0)
+    semua = sorted(semua, key=rank)
     return [normalisasi(akar, m, slim.get(str(m.get("product_id")), {}), params, sekarang) for m in semua]
 
 

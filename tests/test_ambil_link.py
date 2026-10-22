@@ -201,6 +201,39 @@ class Ambil(unittest.TestCase):
         impor_paket.impor(z, data=self.data)
         self.assertEqual(len(json.loads((akar / "products/products.json").read_text())), 4)
 
+    def test_impor_berkas_rusak_tidak_mengubah_apa_pun(self):
+        """Review R4 #8: manifest_slim.json paket yang rusak → PaketError sebelum products.json disentuh."""
+        import impor_paket
+        self.ambil(CdpPalsu(), tanggal="2026-10-19")
+        akar = self.data / "2026-10-19"
+        (akar / "products/manifest_slim.json").write_text("{rusak")
+        sebelum = (akar / "products/products.json").read_text()
+        sumber = fixture.buat(Path(self.tmp.name) / "zipsrc")
+        z = fixture.zip_dari(sumber, Path(self.tmp.name) / "affiliate_pipeline_data_2026-10-19.zip")
+        with self.assertRaises(paket.PaketError):
+            impor_paket.impor(z, data=self.data)
+        self.assertEqual((akar / "products/products.json").read_text(), sebelum)
+        (akar / "products/manifest_slim.json").write_text("[]")
+        impor_paket.impor(z, data=self.data)                                   # setelah diperbaiki: berhasil
+        semua = json.loads((akar / "products/products.json").read_text())
+        self.assertEqual(len(semua), 4)
+        self.assertEqual(len(json.loads((akar / "products/manifest_slim.json").read_text())), 3)   # tanpa duplikat
+
+    def test_rank_aneh_dan_paket_rusak_tidak_traceback(self):
+        """Review R4 #10: rank bukan int dinormalkan; products.json bukan daftar objek → {"error"}, bukan traceback."""
+        akar = self.data / "2026-10-19"
+        (akar / "products").mkdir(parents=True)
+        (akar / "products/products.json").write_text(json.dumps([{"product_id": "1", "rank": "7"}, {"product_id": "2", "rank": None}]))
+        r = self.ambil(CdpPalsu(), tanggal="2026-10-19")
+        self.assertEqual(r["status"], "ditambahkan")
+        self.assertEqual(json.loads((akar / "products/products.json").read_text())[-1]["rank"], 1)
+        (akar / "products/products.json").write_text(json.dumps(["bukan objek"]))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            kode = ambil_link.main([URL, "--tanggal", "2026-10-19", "--data", str(self.data)])
+        self.assertEqual(kode, 1)
+        self.assertIn("bukan daftar objek", json.loads(out.getvalue())["error"])
+
     def test_produk_sudah_ada_tidak_membuka_browser(self):
         self.ambil(CdpPalsu())
         cdp = CdpPalsu()

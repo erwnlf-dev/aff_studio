@@ -418,7 +418,8 @@ def ambil(url, tanggal=None, data=DATA, link=None, perbarui=False, cdp=cdp_node,
             semua = _baca_produk(akar)
             if not perbarui and any(str(p.get("product_id")) == pid for p in semua):
                 return _sudah_ada(akar, tanggal, pid)
-            rank = max([p.get("rank") or 0 for p in semua] + [0]) + 1
+            rank = max([p["rank"] for p in semua if isinstance(p.get("rank"), int) and not isinstance(p["rank"], bool)]
+                       + [0]) + 1
             folder_foto = akar / "products" / pid / "images"
             if perbarui and folder_foto.exists():
                 shutil.rmtree(folder_foto)
@@ -437,8 +438,12 @@ def ambil(url, tanggal=None, data=DATA, link=None, perbarui=False, cdp=cdp_node,
 
 
 def _baca_produk(akar):
+    """products.json paket sebagai daftar objek; bentuk lain = AmbilError (bukan traceback)."""
     pj = akar / "products" / "products.json"
-    return json.loads(pj.read_text(encoding="utf-8")) if pj.exists() else []
+    semua = json.loads(pj.read_text(encoding="utf-8")) if pj.exists() else []
+    if not isinstance(semua, list) or not all(isinstance(p, dict) for p in semua):
+        raise AmbilError("products.json paket %s bukan daftar objek produk; tidak diubah" % akar.name)
+    return semua
 
 
 def _sudah_ada(akar, tanggal, pid):
