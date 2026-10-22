@@ -14,6 +14,7 @@
     python3 tools/produksi.py <folder> compliance                OCR final.mp4: disclosure tiap frame, tanpa Rp/%/diskon
     python3 tools/produksi.py <folder> paket-unggah [--platform]  (setelah disetujui pemilik) → <paket>/unggah/<video_id>/
     python3 tools/produksi.py <folder> sheet                     final_sheet.jpg: 20 frame dari final.mp4 (cek tanpa suara)
+    python3 tools/produksi.py <folder> teks                      teks_platform.json: caption Shopee/TikTok, teks Threads (doc 16)
     python3 tools/produksi.py <folder> status                    langkah yang sudah/belum
 
 Folder kerja bawaan: <paket>/produksi/<id>/ (di luar repo: repo publik). Gaya bawaan midcentury + kit affiliate.
@@ -49,12 +50,17 @@ def jalan(args, **kw):
 
 # Platform tujuan utama video (dipilih pemilik saat Produksi di konsol) → tempat CTA (cta.tempat, doc 15 §2):
 # Shopee Video dan TikTok Shop menautkan produk di keranjang; di Threads link affiliate ada di teks post.
-PLATFORM_CTA = {"shopee_video": "keranjang oranye", "tiktok": "keranjang kuning", "threads": "link"}
+PLATFORM_CTA = {"semua": "bawah", "shopee_video": "keranjang oranye", "tiktok": "keranjang kuning", "threads": "link"}
 
 
 def platform_folder(folder):
+    """Platform tujuan tercatat. Folder lama (produksi.json tanpa 'platform') dibuat dengan CTA Shopee 'cek keranjang
+    oranye' → shopee_video; folder baru tanpa produksi.json → semua (bawaan doc 16). Sama dengan konsol (Aff.platform)."""
+    f = Path(folder) / "produksi.json"
+    if not f.exists():
+        return "semua"
     try:
-        p = json.loads((Path(folder) / "produksi.json").read_text(encoding="utf-8")).get("platform")
+        p = json.loads(f.read_text(encoding="utf-8")).get("platform")
     except (OSError, ValueError):
         p = None
     return p if p in PLATFORM_CTA else "shopee_video"
@@ -103,7 +109,9 @@ def foto_sheet(produk, tujuan):
 # run_produksi.sh di bawah kunci produksi; konsol web tidak mengarsipkan): GAGAL.md lama tidak boleh menutupi video baru,
 # dan final.mp4/qa_compliance.json lama tidak boleh terbaca sebagai hasil run baru. VO, naskah, film, partitur tetap.
 HASIL_RUN = ("final.mp4", "final_sheet.jpg", "cek_akhir.md", "qa_compliance.json", "teks_post.txt", "status.json",
-             "biaya.json", "GAGAL.md")
+             "biaya.json", "GAGAL.md", "teks_platform.json", "tayang.json", "telegram.json")
+# tayang.json/telegram.json (konsol): catatan posting Threads dan serah Telegram versi sebelumnya; konsol menolak Ulangi
+# selama post Threads masih aktif, jadi yang diarsipkan hanya catatan yang sudah selesai (gagal/dibatalkan).
 
 
 def arsipkan_hasil(folder):
@@ -346,6 +354,11 @@ def cmd_qa(a):
     return 0 if q.get("lolos") else 1
 
 
+def cmd_teks(a):
+    """teks_platform.json: caption Shopee Video, TikTok, dan teks/topik/balasan Threads (doc 16) → cek + teks_post.txt."""
+    return subprocess.run([sys.executable, str(TOOLS / "teks_platform.py"), str(a.folder)], cwd=AKAR).returncode
+
+
 def cmd_compliance(a):
     """OCR frame final.mp4: disclosure di setiap frame, tanpa Rp/%/diskon, angka asing ditandai (tools/qa_compliance.py)."""
     if not VENV_PY.exists():
@@ -395,7 +408,7 @@ def cmd_paket_unggah(a):
     import datetime
     import shutil
     folder = Path(a.folder)
-    a.platform = a.platform or platform_folder(folder)
+    a.platform = a.platform or (platform_folder(folder) if platform_folder(folder) != "semua" else "shopee_video")
     m = meta(folder)
     st = json.loads((folder / "status.json").read_text(encoding="utf-8"))
     if not ((st.get("render") or {}).get("qa") or {}).get("lolos"):
@@ -463,7 +476,8 @@ LANGKAH = [("produksi.json", "init"), ("foto_sheet.jpg", "init"), ("cutout_sheet
            ("naskah.txt", "naskah"), ("vo.json", "vo"), ("kata_koreksi.json", "vo"), ("brief.md", "brief"),
            ("pratinjau_r1.jpg", "pratinjau r1"), ("pratinjau_r2.jpg", "pratinjau r2"), ("score.json", "skor"),
            ("ledger.md", "ledger"), ("final.mp4", "render"), ("qa_compliance.json", "compliance"), ("final_sheet.jpg", "sheet"),
-           ("cek_akhir.md", "cek akhir"), ("teks_post.txt", "teks post"), ("biaya.json", "biaya")]
+           ("cek_akhir.md", "cek akhir"), ("teks_platform.json", "teks platform"), ("teks_post.txt", "teks post"),
+           ("biaya.json", "biaya")]
 
 
 def keadaan(folder):
@@ -507,7 +521,7 @@ def main(argv=None):
         ap.add_argument("--paket", required=True)
         ap.add_argument("--produk", required=True)
         ap.add_argument("--folder")
-        ap.add_argument("--platform", choices=sorted(PLATFORM_CTA), help="platform tujuan utama (bawaan: yang tercatat, atau shopee_video)")
+        ap.add_argument("--platform", choices=sorted(PLATFORM_CTA), help="platform tujuan utama (bawaan: yang tercatat, atau semua)")
         ap.add_argument("--baru", action="store_true", help="naskah dan voiceover baru: folder lama diarsipkan utuh ke produksi/_arsip/")
         a = ap.parse_args(argv)
         fn = cmd_init
@@ -520,7 +534,7 @@ def main(argv=None):
         s.add_argument("--crop")
         s.add_argument("--model", choices=["isnet-general-use", "u2net", "u2netp", "silueta"],
                        help="model rembg (bawaan isnet-general-use; u2net kadang lebih baik untuk produk gelap)")
-        for n in ("naskah", "kata", "audit", "skor", "render", "qa", "compliance", "sheet"):
+        for n in ("naskah", "kata", "audit", "skor", "render", "qa", "compliance", "sheet", "teks"):
             sub.add_parser(n)
         s = sub.add_parser("status")
         s.add_argument("--json", action="store_true")
@@ -536,7 +550,7 @@ def main(argv=None):
         a = ap.parse_args(argv)
         fn = {"cutout": cmd_cutout, "naskah": cmd_naskah, "vo": cmd_vo, "kata": cmd_kata, "audit": cmd_audit,
               "pratinjau": cmd_pratinjau, "skor": cmd_skor, "render": cmd_render, "qa": cmd_qa, "compliance": cmd_compliance,
-              "paket-unggah": cmd_paket_unggah, "sheet": cmd_sheet,
+              "paket-unggah": cmd_paket_unggah, "sheet": cmd_sheet, "teks": cmd_teks,
               "status": cmd_status}[a.cmd]
     try:
         return fn(a)

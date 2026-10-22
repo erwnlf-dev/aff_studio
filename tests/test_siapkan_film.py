@@ -50,9 +50,9 @@ class Susun(Dasar):
         self.assertNotIn("*", txt)
         self.assertEqual(len(scenes), 7)
         self.assertEqual(isi["beats"][0]["teks_kunci"], "Keset ini nyerap air?")     # hook_layar
-        self.assertEqual(isi["beats"][-1]["teks_kunci"], "Cek keranjang oranye")     # cta_layar
-        self.assertEqual((isi["template"], isi["hook_tipe"], isi["cta_tempat"]), ("masalah_solusi", "demo", "keranjang oranye"))
-        self.assertEqual(isi["disclosure"], "Link afiliasi")
+        self.assertEqual(isi["beats"][-1]["teks_kunci"], "Cek di bawah")             # cta_layar
+        self.assertEqual((isi["template"], isi["hook_tipe"], isi["cta_tempat"]), ("masalah_solusi", "demo", "bawah"))
+        self.assertEqual(isi["disclosure"], "Konten afiliasi")
         self.assertEqual(isi["variant_id"], ringkas["variant_id"])
         self.assertTrue(foto["foto"][0]["src"].startswith("data:image/jpeg;base64,"))
 
@@ -134,7 +134,15 @@ class Tolak(Dasar):
         def ubah(n):
             n["cta_layar"] = "Cek di link"
             n["beats"][-1]["vo"] = "Warnanya ada dua, *cek di link* ya."
-        self.gagal(ubah, pesan="keranjang oranye")
+        self.gagal(ubah, ov={"cta.tempat": "keranjang oranye"}, pesan="keranjang oranye")
+
+    def test_cta_universal_tanpa_fitur_platform(self):
+        """Bawaan 'bawah' (doc 16): satu video untuk semua platform, jadi CTA tidak menyebut keranjang/Shopee/TikTok."""
+        def ubah(n):
+            n["cta_layar"] = "Cek keranjang oranye di bawah"
+            n["beats"][-1]["vo"] = "Warnanya ada dua, cek *keranjang oranye* di bawah ya."
+        self.gagal(ubah, pesan="universal")
+        self.gagal(lambda n: n["beats"][-1].update(vo="Warnanya ada dua, cek *link* ya."), pesan="link/bio")
 
     def test_cta_link_ditolak_walau_ada_keranjang(self):
         self.gagal(lambda n: n["beats"][-1].update(vo="Cek *keranjang oranye* atau link di bio."), pesan="link/bio")
@@ -200,7 +208,7 @@ class Tolak(Dasar):
         per = []
         isi = sf.susun(self.produk(), n, cek_params.snapshot(self.reg, {}), {"durasi": kata[-1]["selesai"] + 0.5, "kata": kata}, (), per)[0]
         self.assertEqual(isi["timing"], "vo")
-        self.assertTrue(any("keranjang oranye" in w for w in per) and any("hook_tipe" in w for w in per), per)
+        self.assertTrue(any("cek di bawah" in w for w in per) and any("hook_tipe" in w for w in per), per)
 
     def test_foto_di_luar_daftar(self):
         self.gagal(lambda n: n["beats"][0].update(foto=9), pesan="foto")

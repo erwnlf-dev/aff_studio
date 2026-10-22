@@ -129,16 +129,18 @@ export function pelat(ctx, str, x, y, font, o = {}) {
   text(ctx, str, 0, px * 0.36, { font, fill: o.color ?? PAL.ink, align: 'center' });
   ctx.restore();
 }
-// teks kunci per scene (≤ 3 kata, 92 px Slab), pop di t0
-export function teksKunci(ctx, t, t0, str, y = 330) {
+// teks kunci per scene (≤ 3 kata, 92 px Slab), pop di t0; y bawaan 390 = di bawah disclosure (y 250–306)
+export function teksKunci(ctx, t, t0, str, y = 390) {
   const k = pop(t, t0, 0.28); if (k <= 0) return;
   pelat(ctx, str, W / 2, y, '92px Slab', { k, rot: -0.02, seed: 770 + str.length });
 }
 export function labelIlustrasi(ctx, x, y) { text(ctx, 'ilustrasi', x, y, { font: '600 30px Jost', fill: PAL.ink, plate: PAL.white, off: [3, 3] }); }
 // tag kraft di kiri atas, setiap frame (kunci compliance disclosure.ada / disclosure.font_px ≥ 32)
-export function disclosure(ctx, teks = 'Link afiliasi') {
+// Di y = 250 (di bawah tab atas TikTok/Reels, zona aman doc 16); teks "Konten afiliasi" (tanpa "link": di TikTok terbaca
+// sebagai ajakan ke luar platform).
+export function disclosure(ctx, teks = 'Konten afiliasi') {
   const font = '600 34px Jost', w = measure(ctx, teks, font) + 64;
-  ctx.save(); ctx.translate(60, 175);
+  ctx.save(); ctx.translate(130, 250);
   shape(ctx, [[0, 0], [w - 22, 0], [w, 28], [w - 22, 56], [0, 56]], { fill: PAL.white, line: 3.4, seed: 980, grain: 0.1, breaks: 0, off: [4, 4] });
   shape(ctx, ellipse(w - 30, 28, 7, 7, 14), { fill: PAL.kraftL, line: 2.6, seed: 981, off: [0, 0] });
   text(ctx, teks, 20, 40, { font, fill: PAL.ink });
@@ -147,12 +149,13 @@ export function disclosure(ctx, teks = 'Link afiliasi') {
 
 // ------------------------------------------------------------ CTA: panah ke keranjang
 // Shopee Video menaruh keranjang oranye produk di kiri bawah (doc 14 §2, doc 15 §2); TikTok Shop keranjang kuning di
-// tempat yang sama. Panah tinta tebal menggambar dirinya mulai t0 (0,45 s) lalu memantul tiap ketukan, dari bawah
-// caption (dasar y = 1.470) turun ke keranjang. Panggil SETELAH caption(ctx, t) supaya tidak tertutup slab.
+// tempat yang sama; di Threads link ada di balasan (di bawah post), jadi panah ke kiri bawah cocok untuk ajakan
+// universal "cek di bawah". Panah tinta tebal menggambar dirinya mulai t0 (0,45 s) lalu memantul tiap ketukan, dari
+// bawah caption (dasar y = 1.260) turun ke kiri bawah. Panggil SETELAH caption(ctx, t) supaya tidak tertutup slab.
 export function panahKeranjang(ctx, t, t0, o = {}) {
   const u = ss(seg(t, t0, t0 + 0.45)); if (u <= 0) return;
   const bpm = o.bpm ?? 112, bob = ((t - t0) * bpm / 60) % 1;
-  arrow(ctx, o.dari ?? [430, 1530], o.ke ?? [140, 1700], { u, bob, bend: o.bend ?? 0.28, w: 13, head: 66,
+  arrow(ctx, o.dari ?? [430, 1330], o.ke ?? [150, 1560], { u, bob, bend: o.bend ?? 0.28, w: 13, head: 66,
     fill: o.warna ?? PAL.coral, seed: 990 });
 }
 
@@ -160,7 +163,8 @@ export function panahKeranjang(ctx, t, t0, o = {}) {
 // KATA: [[mulai, selesai, teks], ...] (kata_koreksi.json); CAP: [[kata awal, kata akhir, kata disorot], ...];
 // o.digit: {indeks kata: 'teks layar'} (angka sebagai digit); o.dur: META.dur (caption terakhir sampai akhir).
 export function buatCaption(KATA, CAP, o = {}) {
-  const digit = o.digit || {}, dur = o.dur ?? 1e9, dasar = o.y ?? 1470;
+  // dasar 1.260 = 660 px dari bawah (zona aman bersama TikTok/Reels/Shopee, doc 16); film lama memakai 1.470
+  const digit = o.digit || {}, dur = o.dur ?? 1e9, dasar = o.y ?? 1260;
   const CHUNKS = CAP.map(([a, b, s]) => ({ toks: KATA.slice(a, b + 1).map((k, j) => [digit[a + j] ?? k[2], a + j, a + j === s]), a: KATA[a][0], b: KATA[b][1] }));
   CHUNKS.forEach((c, i) => { const nx = CHUNKS[i + 1]; c.end = nx ? Math.min(nx.a, c.b + 0.5) : dur; });
   return function caption(ctx, t) {

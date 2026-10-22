@@ -119,13 +119,18 @@ def cek_pasar(naskah, produk, params, saudara=()):
     Mengembalikan daftar pelanggaran (kosong = lolos)."""
     salah = []
     tempat = params["cta.tempat"]
-    kata_tempat = tempat.split()[0].lower()                 # "keranjang" / "link"
+    kata_tempat = tempat.split()[0].lower()                 # "bawah" / "keranjang" / "link"
     cta = [b for b in naskah["beats"] if b["tipe"] == "cta"]
     teks_cta = " ".join([naskah.get("cta_layar") or ""] + [b["vo"].replace("*", "") for b in cta]).lower()
     if kata_tempat not in teks_cta:
-        salah.append("CTA tidak mengarah ke %s (cta.tempat); contoh: \"cek %s ya\"" % (tempat, tempat))
+        salah.append("CTA tidak mengarah ke %s (cta.tempat); contoh: \"cek %s ya\"" % (tempat, "di bawah" if tempat == "bawah" else tempat))
     if tempat != "link" and re.search(r"\b(link|bio)\b", teks_cta):
-        salah.append("CTA menyebut link/bio, padahal produk ditautkan lewat %s (doc 15 §2)" % tempat)
+        salah.append("CTA menyebut link/bio; %s" % ("cukup \"cek di bawah ya\" (doc 16)" if tempat == "bawah"
+                                                     else "produk ditautkan lewat %s (doc 15 §2)" % tempat))
+    if tempat == "bawah":                                   # satu video untuk semua platform (doc 16)
+        m = re.search(r"\b(keranjang|shopee|tiktok|threads|oranye|kuning)\b", teks_cta)
+        if m:
+            salah.append("CTA universal tidak boleh menyebut %r (fitur satu platform salah di platform lain); cukup \"cek di bawah ya\"" % m.group(0))
     for i, b in enumerate(naskah["beats"]):
         m = PEMBUKA_TERLARANG.search(b["vo"])
         if m:

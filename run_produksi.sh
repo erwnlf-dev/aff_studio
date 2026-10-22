@@ -15,8 +15,8 @@ cd "$(dirname "$0")"
 PAKET="${1:?folder paket}"; ID="${2:?product_id}"; CATATAN="${3:-}"
 # PRODUKSI_BARU=1: naskah dan voiceover baru (init mengarsipkan folder lama utuh, di bawah kunci produksi)
 INIT_ARGS=(); [ "${PRODUKSI_BARU:-}" = "1" ] && INIT_ARGS=(--baru)
-# PRODUKSI_PLATFORM: platform tujuan utama (shopee_video | tiktok | threads), menentukan CTA; kosong = yang tercatat
-[[ "${PRODUKSI_PLATFORM:-}" =~ ^(|shopee_video|tiktok|threads)$ ]] || { echo "PRODUKSI_PLATFORM tidak valid" >&2; exit 2; }
+# PRODUKSI_PLATFORM: platform tujuan utama (semua | shopee_video | tiktok | threads), menentukan CTA; kosong = yang tercatat
+[[ "${PRODUKSI_PLATFORM:-}" =~ ^(|semua|shopee_video|tiktok|threads)$ ]] || { echo "PRODUKSI_PLATFORM tidak valid" >&2; exit 2; }
 [ -n "${PRODUKSI_PLATFORM:-}" ] && INIT_ARGS+=(--platform "$PRODUKSI_PLATFORM")
 [[ "$ID" =~ ^[0-9]{5,20}$ ]] || { echo "product_id tidak valid: $ID" >&2; exit 2; }
 [ -d "$PAKET" ] || { echo "paket tidak ada: $PAKET" >&2; exit 2; }
@@ -106,7 +106,7 @@ echo "run $(date -Is) produk=$ID model=$MODEL effort=$EFFORT voice=$VOICE claude
 CLAUDE_CODE_EFFORT_LEVEL="$EFFORT" ENABLE_CLAUDEAI_MCP_SERVERS=false \
 timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --effort "$EFFORT" \
   --permission-mode acceptEdits --settings "$SETTINGS" --strict-mcp-config "${ADD_DIR[@]}" \
-  --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Bash(python3 tools/produksi.py:*)" "Bash(python3 $REPO/tools/produksi.py:*)" \
+  --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Skill" "Bash(python3 tools/produksi.py:*)" "Bash(python3 $REPO/tools/produksi.py:*)" \
     "Bash(python3 tools/slate.py kuota)" "Bash(python3 $REPO/tools/slate.py kuota)" "Bash(ls:*)" \
   --disallowedTools "WebSearch" "WebFetch" "Bash(curl:*)" "Bash(wget:*)" "Bash(python3 tools/slate.py render:*)" "Bash(python3 tools/slate.py vo:*)" \
   --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" &

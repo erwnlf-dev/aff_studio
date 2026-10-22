@@ -131,7 +131,7 @@ class Produksi(unittest.TestCase):
         """Platform tujuan dipilih saat Produksi: tercatat di produksi.json, bertahan saat run ulang tanpa pilihan, dan
         menentukan cta.tempat yang divalidasi `naskah` dan platform paket unggah bawaan."""
         m = json.loads((self.folder / "produksi.json").read_text())
-        self.assertEqual((m["platform"], m["cta_tempat"]), ("shopee_video", "keranjang oranye"))
+        self.assertEqual((m["platform"], m["cta_tempat"]), ("semua", "bawah"))                    # bawaan doc 16
         (self.folder / "naskah.json").unlink()
         produksi.main(["init", "--paket", str(self.paket), "--produk", fixture.PRODUK_OK, "--folder", str(self.folder),
                        "--platform", "threads"])

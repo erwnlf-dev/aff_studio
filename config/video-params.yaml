@@ -39,6 +39,7 @@ sumber:
   R-SHOPEE-VIDEO: "Pusat Bantuan Shopee (label AI wajib untuk narasi AI, klaim harga, pelanggaran, tag produk, keranjang kiri bawah); doc 14"
   R-PLAYHEAD: "Playhead, 19 video viral TikTok Shop (Mei–Sep 2026): produk terlihat median 0,07 s, bukti median 2,73 s, tanpa wajah median 13,5 s (tryplayhead.com/blog/tiktok-shop-hooks; doc 13 §4)"
   VM-PLATFORMS: "/data/apps/video-maker/config/platforms.json: zona aman px per platform (belum diverifikasi ke platform; doc 13 §5)"
+  R-MULTI: "Riset multi-platform 22 Okt 2026 (docs/16-multi-platform.md): zona aman TikTok/Reels, CTA per platform, TikTok Shop melarang ajakan ke luar, Threads link di balasan, label AI Meta"
   R-PASAR-ID: "Riset pasar Indonesia 20 Okt 2026 (docs/15-riset-pasar-id.md): Shopee Video keranjang oranye kiri bawah, larangan tautan keluar aplikasi, konten repetitif tidak valid untuk level kreator, praktisi ID (hook masalah/nilai/hasil <= 8 kata, tanpa salam/pengantar)"
   PEMILIK-MUSIK: "Catatan pemilik di konsol 20 Okt 2026 17:10 (Ulangi aff002-kipas): 'musik backsound nya hilang muncul hilang muncul jadi kurang enak ditonton'. Ukuran score.json keempat video pertama: rentang level musik p10-p90 27-105 dB, 10-21 jendela 0,5 s tanpa musik di luar hening (level per bagian x0,1-2,3 demi LRA + not musik dihapus di sekitar hentakan)"
   DATA-2026-10-19: "Paket data pemilik affiliate_pipeline_data_2026-10-19.zip (9 produk shortlist); temuan di docs/TODO.md §3"
@@ -382,6 +383,30 @@ parameter:
     rentang: [4.5, 7.0]
     alasan: "WCAG 4,5:1 di setiap frame (Baru Tau BASELINE 13, dicek QA Slate lewat META.kontras). Foto produk terang membuat caption tanpa kotak sering gagal."
     sumber: [BT-BASELINE, BT-SLATE]
+  zona_aman.bersama.bawah_px:
+    status: default
+    kunci: qa
+    nilai: 660
+    rentang: [480, 720]
+    satuan: px dari bawah (dasar caption y = 1.260)
+    alasan: "Irisan zona aman semua platform (doc 16): TikTok turunan template iklan bawah 660 (anchor produk + caption), Reels bawah 35% (~670). Satu master dipakai di Shopee Video, TikTok, Threads."
+    sumber: [R-MULTI]
+  zona_aman.bersama.atas_px:
+    status: default
+    kunci: qa
+    nilai: 240
+    rentang: [130, 300]
+    satuan: px dari atas
+    alasan: "Tab atas TikTok/Reels; disclosure di y = 250."
+    sumber: [R-MULTI]
+  zona_aman.bersama.kanan_px:
+    status: default
+    kunci: qa
+    nilai: 240
+    rentang: [140, 300]
+    satuan: px dari kanan (x <= 840), terutama di bawah y = 840
+    alasan: "Kolom tombol kanan TikTok (300 px mulai y 840 menurut turunan template; sumber lain 140). Teks dan aksi penting x <= 840."
+    sumber: [R-MULTI]
   zona_aman.tiktok.bawah_px:
     status: default
     nilai: 320
@@ -659,9 +684,9 @@ parameter:
     sumber: [BT-BIBLE, BT-AUDIT]
   cta.tempat:
     status: default
-    nilai: keranjang oranye
-    pilihan: [keranjang oranye, keranjang kuning, link]
-    alasan: "Shopee Video: produk ditautkan lewat Tambah Produk dan tampil di keranjang oranye kiri bawah; pedoman Shopee Video melarang tautan keluar aplikasi, jadi 'cek di link' salah tempat. TikTok Shop: keranjang kuning. 'link' hanya untuk Threads/link di bio. CTA diucapkan dan ditulis, ditambah panahKeranjang di layar."
+    nilai: bawah
+    pilihan: [bawah, keranjang oranye, keranjang kuning, link]
+    alasan: "Bawaan 'bawah' (doc 16): satu video untuk semua platform; keranjang oranye/kuning ada di kiri bawah dan link Threads di balasan, jadi 'cek di bawah' benar di semuanya tanpa menyebut fitur platform lain. Pilihan khusus per platform: Shopee Video: produk ditautkan lewat Tambah Produk dan tampil di keranjang oranye kiri bawah; pedoman Shopee Video melarang tautan keluar aplikasi, jadi 'cek di link' salah tempat. TikTok Shop: keranjang kuning. 'link' hanya untuk Threads/link di bio. CTA diucapkan dan ditulis, ditambah panahKeranjang di layar."
     sumber: [R-SHOPEE-VIDEO, R-PASAR-ID]
   cta.posisi:
     status: default
@@ -692,10 +717,10 @@ parameter:
   disclosure.teks:
     status: default
     kunci: compliance
-    nilai: "Link afiliasi"
-    pilihan: ["Link afiliasi", "Mengandung link afiliasi"]
-    alasan: "Kata-kata label persisten. Pendek supaya muat di pojok tanpa menutup produk; tetap jelas maknanya dalam bahasa Indonesia."
-    sumber: [R-TIKTOK-SHOP]
+    nilai: "Konten afiliasi"
+    pilihan: ["Konten afiliasi", "Link afiliasi", "Mengandung link afiliasi"]
+    alasan: "Kata-kata label persisten, pendek supaya muat di pojok. 'Konten afiliasi' sejak 22 Okt: satu video dipakai di Shopee Video, TikTok, dan Threads, dan di TikTok kata 'link' terbaca sebagai ajakan ke luar platform (doc 16 §1). OCR compliance mencari 'afiliasi'."
+    sumber: [R-TIKTOK-SHOP, R-MULTI]
   disclosure.font_px:
     status: default
     kunci: compliance
