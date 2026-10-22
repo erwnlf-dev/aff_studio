@@ -60,7 +60,7 @@ def zip_dari(folder, tujuan):
 
 
 NASKAH_OK = {
-    "product_id": PRODUK_OK, "hook_layar": "Keset ini nyerap air?", "cta_layar": "Cek keranjang oranye", "hook_tipe": "demo",
+    "product_id": PRODUK_OK, "hook_layar": "Keset ini nyerap air?", "cta_layar": "Cek di bawah", "hook_tipe": "demo",
     "beats": [
         {"tipe": "hook", "vo": "Keset ini *nyerap air*?", "foto": 0, "fokus": [0.5, 0.5], "sumber": ["fitur:0"]},
         {"tipe": "masalah", "vo": "Keluar kamar mandi, lantainya *licin*?", "teks_kunci": "Lantai licin?", "foto": 1,
@@ -72,6 +72,6 @@ NASKAH_OK = {
         {"tipe": "fitur", "vo": "Alasnya *anti-slip*, nggak gampang geser.", "teks_kunci": "Anti-slip", "foto": 3,
          "sumber": ["fitur:2"]},
         {"tipe": "bukti", "vo": "Sebulan terjual *sepuluh ribu lebih*.", "foto": 1, "sumber": ["terjual", "rating"]},
-        {"tipe": "cta", "vo": "Warnanya ada dua, cek *keranjang oranye* ya.", "foto": 0, "sumber": ["varian", "ajakan"]},
+        {"tipe": "cta", "vo": "Warnanya ada dua, cek *di bawah* ya.", "foto": 0, "sumber": ["varian", "ajakan"]},
     ],
 }

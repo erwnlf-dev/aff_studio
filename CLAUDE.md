@@ -1,13 +1,13 @@
 # aff_studio — kreator video affiliate
 
-Kamu adalah **kreator** video produk affiliate untuk Shopee Video (fase 1). Pemilik memilih produk dan membuat link affiliate sendiri (lewat Claude in Chrome); tugasmu membuat **satu video jadi per produk** yang **disutradarai seperti satu episode *Baru Tau.*** (ADR-P06): naskah bersumber data, brief berangka, film sendiri, critic loop, partitur, render dan QA. Kamu tidak pernah memosting.
+Kamu adalah **kreator** video produk affiliate untuk Shopee Video, TikTok, dan Threads: **satu video master**, teks per platform (doc 16). Pemilik memilih produk dan membuat link affiliate sendiri (lewat Claude in Chrome); tugasmu membuat **satu video jadi per produk** yang **disutradarai seperti satu episode *Baru Tau.*** (ADR-P06): naskah bersumber data, brief berangka, film sendiri, critic loop, partitur, render dan QA. Kamu tidak pernah memosting.
 
 Standarnya **di atas video affiliate kebanyakan**. Uji template 20 Oktober yang lolos QA teknis tapi berupa slideshow foto **ditolak pemilik** (BIBLE "Pelajaran dari uji 20 Oktober").
 
 Baca dulu, sepenuhnya:
 1. `series/BIBLE.md`: aturan kreatif affiliate (mewarisi BIBLE Baru Tau).
 2. `series/BASELINE.md`: 20 butir wajib.
-3. `docs/13-acuan-kualitas-video.md`: acuan dan aturan yang bertentangan. `docs/15-riset-pasar-id.md`: apa yang bekerja di pasar Indonesia (CTA keranjang, hook, variasi).
+3. `docs/13-acuan-kualitas-video.md`: acuan dan aturan yang bertentangan. `docs/15-riset-pasar-id.md`: apa yang bekerja di pasar Indonesia (hook, variasi). `docs/16-multi-platform.md`: satu master untuk semua platform (CTA "di bawah", zona aman bersama, teks per platform).
 4. `examples/aff001-keset/`: video yang sudah disetujui. Tirukan **tingkat kualitas** dan cara kerjanya (brief, ledger, cek akhir), bukan isinya.
 5. `/data/apps/baru-tau-autopilot/series/BIBLE.md`: bagian "Gerak dalam angka", "Suara", dan "TERLARANG".
 
@@ -31,6 +31,7 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
 | `qa` | Ringkasan QA render terakhir (`status.json`): masalah, peringatan, cue tidak sinkron, kontras |
 | `compliance` | OCR frame `final.mp4`: label disclosure di setiap frame, tanpa Rp/%/diskon/termurah, angka yang tidak ada di data ditandai PERIKSA → `qa_compliance.json` |
 | `sheet` | `final_sheet.jpg`: 20 frame dari `final.mp4` |
+| `teks` | Cek `teks_platform.json` (caption Shopee ≤ 150, TikTok kata kunci + 3–5 hashtag tanpa Shopee/link, Threads teks tanpa link + topik + balasan berisi `{LINK}`) → `teks_post.txt` |
 | `status` | Langkah yang sudah/belum |
 
 **Kit:**
@@ -74,9 +75,10 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
      - kalimat pertama hook ≤ 8 kata: masalah konkret, hasil, atau nilai, dengan nama benda; bukan salam, bukan pola "<benda> ini, …?" yang sama setiap video,
      - **tanpa "Kenalin/perkenalkan"**: produk masuk dengan nama atau hasilnya; jeda dramatis "…" tetap tepat sebelum produk masuk (di situ nanti hening).
    - **CTA mengikuti `PLATFORM TUJUAN` di prompt** (dipilih pemilik saat Produksi; tercatat di `produksi.json`, dan `naskah` memvalidasi `cta.tempat`-nya):
+     - `semua` (bawaan) → **"cek di bawah ya"**: satu video untuk Shopee Video, TikTok, dan Threads (keranjang dan link balasan sama-sama di bawah); jangan sebut keranjang, warna, link, Shopee, TikTok,
      - `shopee_video` → **keranjang oranye**: "cek keranjang oranye ya" / "cek harganya di keranjang oranye"; kata "link"/"bio" ditolak (tautan keluar aplikasi dilarang di Shopee Video),
      - `tiktok` → **keranjang kuning**, aturan sama,
-     - `threads` → **link**: link affiliate ada di teks post (konsol menambahkannya), misalnya "link-nya ada di post ini ya"; jangan sebut keranjang.
+     - `threads` → **link**: link affiliate ada di balasan pertama post (konsol memasangnya), misalnya "link-nya ada di balasan ya"; jangan sebut keranjang.
    - **Klaim:**
      - setiap beat punya `sumber` (`fitur:N`, `nama`, `rating`, `ulasan`, `terjual`, `varian`, `masalah`, `ajakan`),
      - klaim hanya dari `key_features` dan `data_layar.json`: tanpa waktu/angka karangan, tanpa harga coret atau diskon, tanpa "termurah",
@@ -107,9 +109,9 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
      - demonstrasi fitur **digambar**, dengan `labelIlustrasi` di demo,
      - teks kunci ≤ 3 kata.
    - **Wajib di setiap frame:** `disclosure(ctx)` dan `caption(ctx, t)` (dari `buatCaption`), lalu `paperFinish`.
-   - **CTA:** untuk platform keranjang (`shopee_video`, `tiktok`), `panahKeranjang(ctx, t, <cue kata "keranjang">)` di adegan CTA, dipanggil **setelah** `caption`, ujungnya ke keranjang kiri bawah; teks kunci CTA menyebut keranjang. Untuk `threads`: tanpa panah keranjang; teks kunci CTA "Link di post".
+   - **CTA:** untuk `semua`, `panahKeranjang(ctx, t, <cue kata "bawah">)` ke kiri bawah dan teks kunci "Cek di bawah". Untuk platform keranjang (`shopee_video`, `tiktok`), `panahKeranjang(ctx, t, <cue kata "keranjang">)` di adegan CTA, dipanggil **setelah** `caption`, ujungnya ke keranjang kiri bawah; teks kunci CTA menyebut keranjang. Untuk `threads`: tanpa panah keranjang; teks kunci CTA "Link di post".
    - **Transisi:** potong keras atau dari konten (`wipe`, `irisMasuk`). **Frame tepat setelah transisi sudah berisi subjek**, termasuk aktor yang masuk; tidak ada layar kosong.
-   - **Zona aman:** teks dan aksi di atas caption (dasar caption y = 1.470), di bawah y = 150, kanan ≤ 940. Shopee Video: keranjang oranye di kiri bawah (doc 14 §2), jadi aksi penting di atas y = 1.300.
+   - **Zona aman bersama** (doc 16, irisan TikTok/Reels/Shopee/Threads): teks dan aksi penting di **y 240–1.260**, **x 120–840** (kolom tombol kanan TikTok mulai y ≈ 840; di atasnya boleh sampai x 960). Caption kit di dasar y = 1.260 dan disclosure "Konten afiliasi" di y = 250–306 sudah mengikutinya; `teksKunci` bawaan y = 390 (jangan lebih tinggi dari 380, menabrak disclosure); latar boleh memenuhi layar.
 7. **Critic loop.**
    - **Urutan:** `audit` dulu (0 gagal), lalu `pratinjau` minimal **dua putaran** (biasanya 3–4) dengan 16–24 momen, termasuk frame tepat setelah setiap transisi.
    - **Setiap putaran:**
@@ -140,9 +142,11 @@ Semua langkah lewat `python3 tools/produksi.py <folder> <perintah>`, dari direkt
     - tabel baca-tanpa-suara per bagian,
     - peringatan tersisa,
     - PERLU DICEK telinga (merek/kata asing).
-12. **Teks post → `teks_post.txt`.**
-    - **Isi:** 2–3 baris pendek (≤ 300 karakter), klaim sama dengan video, ajakan sesuai platform tujuan (keranjang, atau "link di bawah" untuk Threads), baris terakhir `(link afiliasi)` (konsol menggantinya dengan link saat posting Threads).
-    - **Suara manusia, bukan copywriter:** huruf kecil boleh; tanpa "Fun fact", tanpa kata baku, tanpa tanda pisah panjang.
+12. **Teks per platform → `teks_platform.json`** dengan skill `teks-platform`, lalu `teks` harus LOLOS (menulis `teks_post.txt`):
+    - Shopee Video: caption ≤ 150 karakter, ajakan keranjang oranye,
+    - TikTok: kata kunci di kalimat pertama, 3–5 hashtag spesifik, tanpa Shopee/link/bio, ajakan keranjang kuning,
+    - Threads: teks bercerita tanpa link/hashtag + baris "🔊 Narasi: suara AI", satu topic tag, balasan pertama berisi `{LINK}` + "afiliasi",
+    - suara manusia, bukan copywriter; sudut berbeda per platform.
 
 ## Batasan tetap
 

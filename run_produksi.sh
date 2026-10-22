@@ -106,7 +106,7 @@ echo "run $(date -Is) produk=$ID model=$MODEL effort=$EFFORT voice=$VOICE claude
 CLAUDE_CODE_EFFORT_LEVEL="$EFFORT" ENABLE_CLAUDEAI_MCP_SERVERS=false \
 timeout -k 120 "${MAX_MINUTES:-180}m" "$BIN" -p "$PROMPT" --model "$MODEL" --effort "$EFFORT" \
   --permission-mode acceptEdits --settings "$SETTINGS" --strict-mcp-config "${ADD_DIR[@]}" \
-  --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Bash(python3 tools/produksi.py:*)" "Bash(python3 $REPO/tools/produksi.py:*)" \
+  --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Skill" "Bash(python3 tools/produksi.py:*)" "Bash(python3 $REPO/tools/produksi.py:*)" \
     "Bash(python3 tools/slate.py kuota)" "Bash(python3 $REPO/tools/slate.py kuota)" "Bash(ls:*)" \
   --disallowedTools "WebSearch" "WebFetch" "Bash(curl:*)" "Bash(wget:*)" "Bash(python3 tools/slate.py render:*)" "Bash(python3 tools/slate.py vo:*)" \
   --output-format stream-json --verbose < /dev/null > "$JSONL" 2>> "$LOG" &
